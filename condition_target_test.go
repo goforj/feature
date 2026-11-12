@@ -54,7 +54,7 @@ func TestTimeTargetConditions(t *testing.T) {
 // TestConditionRejectsUnsupportedActual keeps invalid internal inputs from matching negative comparisons.
 func TestConditionRejectsUnsupportedActual(t *testing.T) {
 	condition := Condition{Attribute: "value", Operator: OpNotEqual, Value: int64(0)}
-	if conditionMatches(condition, Subject{values: map[string]any{"value": func() {}}}) {
+	if conditionMatches(condition, Subject{values: map[string]any{"value": func() {}}}, nil) {
 		t.Fatal("unsupported comparison input matched a rule")
 	}
 }

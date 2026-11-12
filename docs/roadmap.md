@@ -1,5 +1,7 @@
 # Remaining work
 
+The standalone [production-readiness assessment](production-readiness.md) records the current library candidate gates separately from framework integration and publication.
+
 The standalone first implementation is built and pushed. The broader GoForj feature is still in progress. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
 
 The [provider study](provider-study.md) informed a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, SDK adapters, and cross-driver local integration suite are implemented. Hosted LaunchDarkly account verification remains pending and is distinct from the tested local SDK transports.

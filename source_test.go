@@ -170,6 +170,19 @@ func TestReadFileFailures(t *testing.T) {
 
 // FuzzDecode checks untrusted documents cannot panic or escape the validation contract.
 func FuzzDecode(f *testing.F) {
+	for _, pattern := range []string{
+		"(?:" + strings.Repeat("a?", 500) + "){1000}",
+		strings.Repeat(`\pL`, 250),
+		`^\pL{900}$`,
+		strings.Repeat(`[\pL\PL]`, 100),
+		`^\pL{64}$`,
+	} {
+		data, err := json.Marshal(patternDocument(pattern, 1))
+		if err != nil {
+			f.Fatal(err)
+		}
+		f.Add(data)
+	}
 	f.Add([]byte(`{"schema":2,"flags":{"launch":{"default":false,"rules":[{"start":"0000-01-01T00:00:00+14:00","value":true}]}}}`))
 	f.Add([]byte(`{"schema":2,"flags":{"launch":{"default":false,"rules":[{"end":"9999-12-31T23:00:00-14:00","value":true}]}}}`))
 	f.Add([]byte(`{"schema":2,"flags":{"number":{"type":"float","default":9.223372036854776e18},"config":{"default":{"values":[1e20,-1e20,9223372036854775807]}}}}`))

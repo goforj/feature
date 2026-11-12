@@ -75,6 +75,9 @@ type Progressive struct {
 
 // normalizeCondition validates comparison policy once before publication.
 func normalizeCondition(condition Condition) (Condition, error) {
+	if condition.Operator != OpMatches {
+		condition.pattern = nil
+	}
 	if !validConditionName(condition.Attribute) {
 		return Condition{}, ErrInvalidDocument
 	}
@@ -117,9 +120,11 @@ func normalizeCondition(condition Condition) (Condition, error) {
 			return Condition{}, ErrInvalidDocument
 		}
 		if condition.Operator == OpMatches {
-			condition.pattern, err = regexp.Compile(text)
-			if err != nil {
+			if _, err := patternCost(text); err != nil {
 				return Condition{}, ErrInvalidDocument
+			}
+			if condition.pattern == nil || condition.pattern.String() != text {
+				condition.pattern = regexp.MustCompile(text)
 			}
 		}
 	default:
@@ -243,7 +248,7 @@ func equalValue(left, right any) bool {
 }
 
 // conditionMatches requires presence for every comparison except explicit missing.
-func conditionMatches(condition Condition, subject Subject) bool {
+func conditionMatches(condition Condition, subject Subject, cache *comparisonCache) bool {
 	actual, present := subjectValue(subject, condition.Attribute)
 	if condition.Operator == OpExists {
 		return present
@@ -254,8 +259,7 @@ func conditionMatches(condition Condition, subject Subject) bool {
 	if !present {
 		return false
 	}
-	budget := 0
-	actual, err := cloneValue(actual, 0, &budget, true)
+	actual, err := cache.normalize(condition.Attribute, actual)
 	if err != nil {
 		return false
 	}

@@ -1,0 +1,39 @@
+goos: darwin
+goarch: arm64
+pkg: feature-performance-probe
+cpu: Apple M4 Max
+BenchmarkReads/NativeBool         	 3625644	       163.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/NativeBool         	 3671678	       161.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/NativeBool         	 3612410	       163.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/ViewBool           	 4791145	       125.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/ViewBool           	 4735765	       125.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/ViewBool           	 4197190	       128.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReads/ScopedBool         	 1000000	       630.9 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/ScopedBool         	  978393	       626.4 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/ScopedBool         	  996566	       628.6 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/FixedScopedBool    	 1000000	       593.0 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/FixedScopedBool    	 1000000	       589.1 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/FixedScopedBool    	 1000000	       590.8 ns/op	     720 B/op	       7 allocs/op
+BenchmarkReads/ScopedInt          	  973999	       639.9 ns/op	     736 B/op	       9 allocs/op
+BenchmarkReads/ScopedInt          	  981466	       639.7 ns/op	     736 B/op	       9 allocs/op
+BenchmarkReads/ScopedInt          	  974988	       641.5 ns/op	     736 B/op	       9 allocs/op
+BenchmarkReads/ScopedObject       	  531690	      1128 ns/op	    1792 B/op	      25 allocs/op
+BenchmarkReads/ScopedObject       	  535534	      1124 ns/op	    1792 B/op	      25 allocs/op
+BenchmarkReads/ScopedObject       	  535510	      1140 ns/op	    1792 B/op	      25 allocs/op
+BenchmarkConditions/rules1_conditions1_items100         	  124252	      4651 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions1_items100         	  143154	      4206 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions1_items100         	  144194	      4226 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions8_items100         	  132886	      4496 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions8_items100         	  134180	      4479 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions8_items100         	  136767	      4438 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules8_conditions8_items100         	   33472	     17713 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules8_conditions8_items100         	   34695	     17311 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules8_conditions8_items100         	   33655	     18171 ns/op	    7680 B/op	     209 allocs/op
+BenchmarkConditions/rules1_conditions32_items1024       	   14071	     42569 ns/op	   70528 B/op	    2057 allocs/op
+BenchmarkConditions/rules1_conditions32_items1024       	   14284	     42165 ns/op	   70528 B/op	    2057 allocs/op
+BenchmarkConditions/rules1_conditions32_items1024       	   14138	     42439 ns/op	   70528 B/op	    2057 allocs/op
+BenchmarkConditions/rules64_conditions32_items1024      	      90	   5935006 ns/op	   70528 B/op	    2057 allocs/op
+BenchmarkConditions/rules64_conditions32_items1024      	     100	   5928467 ns/op	   70528 B/op	    2057 allocs/op
+BenchmarkConditions/rules64_conditions32_items1024      	     100	   6019586 ns/op	   70528 B/op	    2057 allocs/op
+PASS
+ok  	feature-performance-probe	20.005s

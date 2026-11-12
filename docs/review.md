@@ -147,6 +147,18 @@ Both fixes passed independent re-review and their original external reproduction
 
 The final local gate passed 378 unit cases, all 12 programs, and 1841/1841 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, generated-document parity, and the native Go 1.24.13 race suite passed. Independent targeted regressions also passed 10 race-enabled repetitions.
 
+## Production hardening and closure
+
+The maintainer requested continued review until the standalone library met concrete production-candidate gates. The [readiness assessment](production-readiness.md) separates source acceptance from framework adoption, hosted verification, and publication.
+
+Performance review measured repeated structured normalization in each condition: a valid 64-rule, 32-condition configuration allocated 71 MB per read. Matching now uses an evaluation-local structured-value cache, including cached validation failures, without changing scalar normalization. Independent matched-fixture measurements show approximately sevenfold lower latency and 99.90% fewer allocated bytes at the largest tested composition. Typical scalar allocation counts are unchanged. The [method, harness, and raw measurements](performance.md) are retained.
+
+Security review reproduced regex compilation amplification outside the previous text-byte bounds. Follow-up closure caught Unicode backing capacity and anchored optimizer copies. Full-document preflight now checks conservative instruction and rune/dispatch storage estimates before compilation. Accepted immutable programs are reused and discarded when their condition operator or text changes. Rejected startup documents fail safely; rejected refreshes retain the last valid snapshot. These are necessary configuration-validation restrictions, documented with migration guidance in the contract. Valid accepted encoding and revision contracts are unchanged.
+
+Independent estimator properties covered the actual regex compiler, not only its syntax program, on minimum and current Go versions. The original expansion, Unicode-table, hidden-capacity, and anchored-repeat counterexamples reject. Two fresh closure rounds found no additional actionable issue within the documented supported usage. Separate properties covered nested numeric/time targeting, typed values, composed definitions, source round trips, snapshots, and exact rollouts.
+
+The candidate passed 418 unit cases, 12 programs, and 1966/1966 runtime statements. All 160 separate integration cases passed with race detection, plus five shuffled full-suite repetitions. Independent multi-domain SDK/outage/subscription stress passed 30 repetitions, and minimum-version, module, documentation, and vulnerability checks passed. First-party published requirements and independent Git consumer verification must select the hardened commit before final acceptance.
+
 ## Distribution inventory
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

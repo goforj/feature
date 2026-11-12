@@ -91,15 +91,21 @@ There is no snapshot persistence across process restarts. A restart while its so
 | Surface | Limit |
 | --- | ---: |
 | Raw JSON bytes | 1 MiB |
-| Compiled document accounting | 1 MiB conservative budget |
+| Normalized document encoding | 1 MiB, with conservative preflight accounting |
 | Flags | 1024 |
 | Rules per flag | 64 |
 | Subjects per rule | 1024 |
 | Attributes per rule or evaluation subject | 32 |
 | Identity, salt, or attribute value | 1024 UTF-8 bytes |
 | Flag or attribute key | 128 bytes |
+| Regex instruction estimate per pattern / document | 4096 / 65536 |
+| Regex rune/dispatch storage-entry estimate per pattern / document | 262144 / 1048576 |
 
 Keys contain only ASCII letters, digits, period, underscore, and hyphen. They cannot be empty. Budget accounting reserves up to six encoded bytes per input string byte plus structural overhead, before allocating a deep copy or canonical JSON. Consequently some raw JSON documents smaller than 1 MiB are rejected by the conservative compiled budget. Passing one limit does not bypass the others. JSON scanning also bounds nesting.
+
+Regex limits are checked for the entire document before compiling any expression. Estimates cover counted repetition, Unicode tables and backing capacity, and the compiler's anchored one-pass dispatch storage. Each storage entry accounts for four bytes of rune or transition data; the limit is a conservative estimate, not a total process-heap limit. Repeated conditions count separately even when immutable compiled programs can be reused. Some expressions with smaller actual programs are rejected, including some optional Unicode repetitions.
+
+These limits tighten earlier regex validation to prevent source-controlled compilation memory exhaustion. Previously accepted expressions that exceed either budget now return ErrInvalidDocument at startup or refresh; a failed refresh retains the last valid snapshot. Simplify such expressions, reduce counted/optional repetition, or use literal contains/prefix/suffix conditions and separately derived attributes instead. Valid accepted document bytes, revision hashing, and rollout assignments are unchanged.
 
 ## Process and product boundaries
 

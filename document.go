@@ -108,6 +108,9 @@ func compile(doc Document) (*compiled, error) {
 	if (doc.Schema != SchemaVersion && doc.Schema != TypedSchemaVersion) || doc.Flags == nil || len(doc.Flags) > MaxFlags {
 		return nil, ErrInvalidDocument
 	}
+	if err := validatePatternBudget(doc); err != nil {
+		return nil, err
+	}
 	owned := Document{Schema: doc.Schema, Flags: make(map[string]Flag, len(doc.Flags))}
 	budget := 64
 	for key, flag := range doc.Flags {

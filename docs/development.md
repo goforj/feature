@@ -37,6 +37,8 @@ Keep source-owned comments and expected output immediately adjacent to calls. On
 
 ## Publication status
 
+The standalone [production-readiness assessment](production-readiness.md) tracks closure reviews, measured resource bounds, stress evidence, and remaining external gates. Native evaluation measurements and their reproducible harness are recorded in [performance](performance.md).
+
 The repository is unreleased. Local validation does not establish public installation, remote CI, Codecov uploads, or GitHub App access. The local task prepares workflows and a strict Codecov policy; it does not configure external accounts, repository secrets, webhooks, or releases.
 
 Before publishing, observe CI for the exact candidate, verify independent root and nested-module consumers with GOWORK=off and no replacements, and confirm external coverage setup if enabled. Private Git consumers have passed as recorded in verification.md. Public-proxy installation still requires the intended distribution model and separately published module tags. Until then the README's clone-and-run path is the intended entry point. No release tag or pseudo-version is invented.

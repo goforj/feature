@@ -60,11 +60,11 @@ func (v *View) Evaluate(ctx context.Context, key string, fallback bool, subject 
 
 // matches requires every condition, with missing identities excluded from rollouts.
 func matches(rule Rule, key string, subject Subject) bool {
-	return matchesAt(rule, key, subject, time.Now())
+	return matchesAt(rule, key, subject, time.Now(), nil)
 }
 
 // matchesAt keeps calendar eligibility and stable targeting on one captured evaluation time.
-func matchesAt(rule Rule, key string, subject Subject, at time.Time) bool {
+func matchesAt(rule Rule, key string, subject Subject, at time.Time, cache *comparisonCache) bool {
 	if rule.Start != nil && at.Before(*rule.Start) || rule.End != nil && !at.Before(*rule.End) {
 		return false
 	}
@@ -86,7 +86,7 @@ func matchesAt(rule Rule, key string, subject Subject, at time.Time) bool {
 		}
 	}
 	for _, condition := range rule.Conditions {
-		if !conditionMatches(condition, subject) {
+		if !conditionMatches(condition, subject, cache) {
 			return false
 		}
 	}

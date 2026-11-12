@@ -50,8 +50,9 @@ func evaluateNative[T any](v *View, ctx context.Context, key string, fallback T,
 			value = false
 		}
 	} else {
+		var cache comparisonCache
 		for _, rule := range flag.Rules {
-			if matchesAt(rule, key, subject, v.at) {
+			if matchesAt(rule, key, subject, v.at, &cache) {
 				value = rule.Value
 				if rule.Variant != "" {
 					value = flag.Variants[rule.Variant]

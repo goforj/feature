@@ -1,0 +1,138 @@
+package performance
+
+import (
+ "context"
+ "fmt"
+ "encoding/json"
+ "time"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+
+ "github.com/goforj/feature"
+)
+
+var booleanResult feature.Decision
+var integerResult feature.Result[int64]
+var objectResult feature.Result[any]
+var clientResult *feature.Client
+
+// openClient fails fixture construction before timed measurement.
+func openClient(b *testing.B, doc feature.Document) *feature.Client {
+ b.Helper()
+ c, err := feature.Open(context.Background(), feature.SourceFunc(func(context.Context) (feature.Document, error) {return doc,nil}))
+ if err != nil {b.Fatal(err)}
+ return c
+}
+
+// BenchmarkReads compares warmed native and scoped scalar reads with normal targeting data.
+func BenchmarkReads(b *testing.B) {
+ ctx := context.Background()
+ doc := feature.Document{Schema:2,Flags:map[string]feature.Flag{
+ "enabled":{Default:false, Rules:[]feature.Rule{{Attributes:map[string]string{"plan":"pro"},Value:true}}},
+ "limit":{Default:int64(50), Rules:[]feature.Rule{{Conditions:[]feature.Condition{{Attribute:"seats",Operator:feature.OpGreaterOrEqual,Value:int64(10)}},Value:int64(100)}}},
+ "config":{Default:map[string]any{"theme":"dark","limit":int64(100),"regions":[]any{"us","eu"}}},
+ }}
+ c := openClient(b,doc)
+ view := c.Snapshot()
+ subject := feature.Subject{Key:"tenant:12345",Attributes:map[string]string{"plan":"pro","region":"us","version":"2026.11"}}
+ target := feature.Target{Key:"tenant:12345",Attributes:map[string]any{"plan":"pro","region":"us","version":"2026.11","seats":int64(12)}}
+ scope := feature.New(c).For(target)
+ fixed := feature.New(view).For(target)
+ b.Run("NativeBool",func(b *testing.B){b.ReportAllocs();for b.Loop(){booleanResult=c.Evaluate(ctx,"enabled",false,subject)}})
+ b.Run("ViewBool",func(b *testing.B){b.ReportAllocs();for b.Loop(){booleanResult=view.Evaluate(ctx,"enabled",false,subject)}})
+ b.Run("ScopedBool",func(b *testing.B){b.ReportAllocs();for b.Loop(){booleanResult=scope.Evaluate(ctx,"enabled",false)}})
+ b.Run("FixedScopedBool",func(b *testing.B){b.ReportAllocs();for b.Loop(){booleanResult=fixed.Evaluate(ctx,"enabled",false)}})
+ b.Run("ScopedInt",func(b *testing.B){b.ReportAllocs();for b.Loop(){integerResult=scope.Int(ctx,"limit",int64(0))}})
+ b.Run("ScopedObject",func(b *testing.B){b.ReportAllocs();for b.Loop(){objectResult=scope.Object(ctx,"config",map[string]any{})}})
+}
+
+// conditionFixture traverses every condition by failing the last comparison of each rule.
+func conditionFixture(rules, conditions, items int) (feature.Document,feature.Target) {
+ values:=make([]any,items)
+ for i:=range values {values[i]=fmt.Sprintf("product:%04d",i)}
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{}}
+ flag:=feature.Flag{Default:false}
+ for r:=0;r<rules;r++ {
+  rule:=feature.Rule{Value:true}
+  for n:=0;n<conditions;n++ {
+   operand:=values[(r*(conditions-1)+n)%items]
+   if n==conditions-1 {operand=fmt.Sprintf("product:missing:%04d",r)}
+   rule.Conditions=append(rule.Conditions,feature.Condition{Attribute:"products",Operator:feature.OpContains,Value:operand})
+  }
+  flag.Rules=append(flag.Rules,rule)
+ }
+ doc.Flags["eligible"]=flag
+ return doc,feature.Target{Key:"tenant:12345",Attributes:map[string]any{"products":values}}
+}
+
+// BenchmarkConditions measures supported repeated comparisons over structured targeting data.
+func BenchmarkConditions(b *testing.B) {
+ for _,tc:=range []struct{rules,conditions,items int}{{1,1,100},{1,8,100},{8,8,100},{1,32,1024},{64,32,1024}} {
+  b.Run(fmt.Sprintf("rules%d_conditions%d_items%d",tc.rules,tc.conditions,tc.items),func(b *testing.B){
+   doc,target:=conditionFixture(tc.rules,tc.conditions,tc.items)
+   c:=openClient(b,doc)
+   scope:=feature.New(c).For(target)
+   if d:=scope.Evaluate(context.Background(),"eligible",true);d.Err!=nil||d.Value {b.Fatalf("invalid decision: %+v",d)}
+   b.ReportAllocs();b.ResetTimer()
+   for b.Loop(){booleanResult=scope.Evaluate(context.Background(),"eligible",true)}
+  })
+ }
+}
+
+// refreshFixture exercises the largest flag inventory and a near-budget rule document.
+func refreshFixture(kind string) feature.Document {
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{}}
+ switch kind {
+ case "1024flags":
+  for i:=0;i<feature.MaxFlags;i++ {doc.Flags[fmt.Sprintf("flag-%04d",i)]=feature.Flag{Default:false}}
+ case "near1MiB":
+  for i:=0;i<15;i++ {doc.Flags[fmt.Sprintf("flag-%04d",i)]=feature.Flag{Default:strings.Repeat("c",65000)}}
+ case "nearbudget":
+  for i:=0;i<160;i++ {
+   doc.Flags[fmt.Sprintf("flag-%04d",i)]=feature.Flag{Default:false,Rules:[]feature.Rule{{Attributes:map[string]string{"plan":strings.Repeat("p",990)},Value:true}}}
+  }
+ }
+ return doc
+}
+
+// BenchmarkRefresh distinguishes source ownership, parse cost, changed publication, and unchanged refresh.
+func BenchmarkRefresh(b *testing.B) {
+ ctx:=context.Background()
+ for _,kind:=range []string{"1024flags","nearbudget","near1MiB"} {
+  doc:=refreshFixture(kind)
+  data,err:=feature.Encode(doc);if err!=nil {b.Fatal(err)}
+  b.Logf("fixture %s: flags=%d JSON=%d bytes",kind,len(doc.Flags),len(data))
+  b.Run(kind,func(b *testing.B){
+   b.Run("RawOpen",func(b *testing.B){source:=feature.SourceFunc(func(context.Context)(feature.Document,error){return doc,nil});b.ReportAllocs();for b.Loop(){clientResult,err=feature.Open(ctx,source);if err!=nil{b.Fatal(err)}}})
+   b.Run("RawUnchanged",func(b *testing.B){c:=openClient(b,doc);b.ReportAllocs();b.ResetTimer();for b.Loop(){if err:=c.Refresh(ctx);err!=nil{b.Fatal(err)}}})
+   b.Run("MemoryUnchanged",func(b *testing.B){source,err:=feature.NewMemorySource(doc);if err!=nil{b.Fatal(err)};c,err:=feature.Open(ctx,source);if err!=nil{b.Fatal(err)};b.ReportAllocs();b.ResetTimer();for b.Loop(){if err:=c.Refresh(ctx);err!=nil{b.Fatal(err)}}})
+   b.Run("FileUnchanged",func(b *testing.B){path:=filepath.Join(b.TempDir(),"flags.json");if err:=os.WriteFile(path,data,0600);err!=nil{b.Fatal(err)};c,err:=feature.Open(ctx,feature.NewFileSource(path));if err!=nil{b.Fatal(err)};b.ReportAllocs();b.ResetTimer();for b.Loop(){if err:=c.Refresh(ctx);err!=nil{b.Fatal(err)}}})
+  })
+ }
+}
+
+// TestColdOpen reports the first native construction and decision in a fresh process.
+func TestColdOpen(t *testing.T) {
+ doc:=refreshFixture("1024flags")
+ start:=time.Now()
+ client,err:=feature.Open(context.Background(),feature.SourceFunc(func(context.Context)(feature.Document,error){return doc,nil}))
+ opened:=time.Since(start)
+ if err!=nil {t.Fatal(err)}
+ start=time.Now()
+ decision:=client.Evaluate(context.Background(),"flag-0000",true,feature.Subject{Key:"tenant:12345"})
+ first:=time.Since(start)
+ if decision.Err!=nil||decision.Value {t.Fatal(decision)}
+ t.Logf("first Open=%s first native Evaluate=%s",opened,first)
+}
+
+// TestFixtureSizes records accepted encoded sizes independently of timed measurement.
+func TestFixtureSizes(t *testing.T) {
+ for _,tc:=range []struct{r,c,n int}{{8,8,100},{64,32,1024}} {
+  doc,target:=conditionFixture(tc.r,tc.c,tc.n)
+  data,err:=feature.Encode(doc);if err!=nil{t.Fatal(err)}
+  encodedTarget,err:=json.Marshal(target);if err!=nil{t.Fatal(err)}
+  t.Logf("rules=%d conditions=%d items=%d document JSON=%d target JSON=%d",tc.r,tc.c,tc.n,len(data),len(encodedTarget))
+ }
+}
