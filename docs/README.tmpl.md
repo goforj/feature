@@ -16,12 +16,15 @@
 
 ## Features
 
-| Feature | What you get |
-| :--- | :--- |
-| <img src="docs/assets/check.svg" width="22" height="22" alt=""> Boolean flags | Explicit defaults, ordered rules, exact identity and attribute matching. |
-| <img src="docs/assets/rollout.svg" width="22" height="22" alt=""> Stable rollouts | Consistent assignment per identity, flag, and salt. |
-| <img src="docs/assets/snapshot.svg" width="22" height="22" alt=""> Immutable snapshots | Capture one revision for all decisions in a request or job. |
-| <img src="docs/assets/refresh.svg" width="22" height="22" alt=""> Live refresh | Adopt complete valid documents while retaining the last valid snapshot after failures. |
+<table>
+<thead><tr><th align="left" width="38%">Feature</th><th align="left">What you get</th></tr></thead>
+<tbody>
+<tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Boolean flags</td><td valign="middle">Explicit defaults, ordered rules, and exact identity and attribute matching.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Consistent assignment per identity, flag, and salt.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/snapshot.svg" width="18" height="18" alt="" align="absmiddle"> Immutable snapshots</td><td valign="middle">One captured revision for every decision in a request or job.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/refresh.svg" width="18" height="18" alt="" align="absmiddle"> Live refresh</td><td valign="middle">Publish complete valid documents; retain the last valid snapshot after failures.</td></tr>
+</tbody>
+</table>
 
 ## Quick start
 
@@ -89,3 +92,5 @@ make check-generated
 ```
 
 See [development](docs/development.md) for module ownership, validation commands, and publication status. Framework integration, hosted providers, and administration interfaces are separate from this standalone library.
+
+The [remaining-work checklist](docs/roadmap.md) tracks library review, real-App validation, GoForj integration, and release preparation.

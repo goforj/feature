@@ -93,6 +93,11 @@ func TestGenerateNavigation(t *testing.T) {
 	if strings.Contains(readme, "{{") {
 		t.Fatal("unresolved marker")
 	}
+	features := strings.SplitN(strings.SplitN(readme, "## Features\n", 2)[1], "\n## Quick start", 2)[0]
+	if strings.Count(features, `width="18" height="18" alt="" align="absmiddle"`) != 4 ||
+		strings.Count(features, `<td width="38%" valign="middle">`) != 4 || strings.Contains(features, "nowrap") {
+		t.Fatal("feature table must preserve icon size, middle alignment, and wrapping labels")
+	}
 	for _, entry := range Entries() {
 		anchor := "api-" + strings.ToLower(entry.Name)
 		if strings.Count(readme, `<a id="`+anchor+`"></a>`) != 1 || !strings.Contains(readme, "["+entry.Name+"](#"+anchor+")") {
