@@ -59,12 +59,15 @@ Run from the repository root:
 
 ```sh
 go run ./examples/quickstart # Identity targeting and explicit fallback.
+go run ./examples/portable   # Provider-neutral checks and typed request targeting.
 go run ./examples/targeting  # Attribute matching and a stable percentage rollout.
 go run ./examples/refresh   # File replacement and consistent request snapshots.
 go run ./examples/polling   # Live updates with an owned, cancellable refresh loop.
 ```
 
 Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go).
+
+The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 
 ## How it works
 

@@ -24,6 +24,10 @@ type Entry struct{ Group, Name, Marker, Example string }
 // Entries returns the curated consumer-facing API inventory.
 func Entries() []Entry {
 	return []Entry{
+		{"Portable evaluation", "New", "portable", "portable"},
+		{"Portable evaluation", "Features.For", "portable", "portable"},
+		{"Portable evaluation", "Features.Enabled", "portable", "portable"},
+		{"Portable evaluation", "Scope.Evaluate", "portable", "portable"},
 		{"Construction", "NewMemorySource", "construction", "quickstart"},
 		{"Construction", "Open", "construction", "quickstart"},
 		{"Evaluation", "Enabled", "enabled", "quickstart"},
@@ -124,6 +128,10 @@ func Snippet(root, example, marker string) (string, error) {
 
 // GoDoc reads comments attached to actual exported functions and methods using Go's parser.
 func GoDoc(root, name string) (string, error) {
+	receiver, symbol, qualified := strings.Cut(name, ".")
+	if !qualified {
+		symbol = name
+	}
 	paths, err := filepath.Glob(filepath.Join(root, "*.go"))
 	if err != nil {
 		return "", err
@@ -138,11 +146,24 @@ func GoDoc(root, name string) (string, error) {
 		}
 		for _, declaration := range file.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Name.Name != name {
+			if !ok || function.Name.Name != symbol {
 				continue
 			}
+			if qualified {
+				if function.Recv == nil {
+					continue
+				}
+				typeExpr := function.Recv.List[0].Type
+				if pointer, ok := typeExpr.(*ast.StarExpr); ok {
+					typeExpr = pointer.X
+				}
+				identifier, ok := typeExpr.(*ast.Ident)
+				if !ok || identifier.Name != receiver {
+					continue
+				}
+			}
 			text := strings.Join(strings.Fields(function.Doc.Text()), " ")
-			if !strings.HasPrefix(text, name+" ") {
+			if !strings.HasPrefix(text, symbol+" ") {
 				return "", fmt.Errorf("missing name-leading GoDoc: %s", name)
 			}
 			return text, nil
@@ -277,6 +298,9 @@ func Generate(root string) error {
 
 // demonstrates checks actual call expressions rather than matching comment or string text.
 func demonstrates(code, name string) bool {
+	if _, symbol, qualified := strings.Cut(name, "."); qualified {
+		name = symbol
+	}
 	file, err := parser.ParseFile(token.NewFileSet(), "snippet.go", "package snippet\nfunc example(){\n"+code+"\n}", 0)
 	if err != nil {
 		return false

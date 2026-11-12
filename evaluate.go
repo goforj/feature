@@ -15,12 +15,19 @@ const (
 	ReasonDefault Reason = "default"
 	// ReasonRule indicates that an ordered targeting rule matched.
 	ReasonRule Reason = "rule"
-	// ReasonDisabled indicates that the flag explicitly forces false.
+	// ReasonDisabled indicates a disabled flag; the native engine forces false.
+	// External drivers preserve the vendor's configured off-variation.
 	ReasonDisabled Reason = "disabled"
 	// ReasonMissing indicates that the flag is absent from the captured snapshot.
 	ReasonMissing Reason = "missing"
 	// ReasonError indicates cancellation or invalid evaluation input.
 	ReasonError Reason = "error"
+	// ReasonUnknown indicates that a provider supplied no portable reason.
+	ReasonUnknown Reason = "unknown"
+	// ReasonStatic indicates a provider's static value.
+	ReasonStatic Reason = "static"
+	// ReasonSplit indicates a provider's percentage or experimental allocation.
+	ReasonSplit Reason = "split"
 )
 
 // Decision includes a value, its explanation, the captured revision, and any fallback error.
@@ -28,7 +35,9 @@ type Decision struct {
 	Value    bool
 	Reason   Reason
 	Revision string
-	Err      error
+	// Variant identifies a vendor variation when the driver can supply it.
+	Variant string
+	Err     error
 }
 
 // View holds a complete immutable revision for request or job consistency.

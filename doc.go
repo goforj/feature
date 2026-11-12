@@ -1,4 +1,8 @@
-// Package feature evaluates live boolean feature flags against immutable snapshots.
+// Package feature provides portable boolean feature decisions and a native flag engine.
+//
+// New borrows an initialized Evaluator. Features provides short checks and typed
+// request targeting through For. Native Client implements Evaluator while retaining
+// its source, refresh, status, and genuine immutable snapshot contracts.
 //
 // Open loads a complete source synchronously. Applications own the refresh lifecycle:
 // call Refresh explicitly or run Run with a cancellable context. Evaluations never

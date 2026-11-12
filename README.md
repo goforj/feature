@@ -80,12 +80,15 @@ Run from the repository root:
 
 ```sh
 go run ./examples/quickstart # Identity targeting and explicit fallback.
+go run ./examples/portable   # Provider-neutral checks and typed request targeting.
 go run ./examples/targeting  # Attribute matching and a stable percentage rollout.
 go run ./examples/refresh   # File replacement and consistent request snapshots.
 go run ./examples/polling   # Live updates with an owned, cancellable refresh loop.
 ```
 
 Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go).
+
+The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 
 ## How it works
 
@@ -99,12 +102,49 @@ Tests execute these programs and verify their output. Their source is authoritat
 
 | Group | Functions |
 | ---: | :--- |
+| **Portable evaluation** | [New](#api-new) · [Features.For](#api-features.for) · [Features.Enabled](#api-features.enabled) · [Scope.Evaluate](#api-scope.evaluate) |
 | **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
 | **Evaluation** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
 | **Consistency** | [Snapshot](#api-snapshot) |
 | **Sources** | [Decode](#api-decode) · [NewFileSource](#api-newfilesource) |
 | **Refresh** | [Replace](#api-replace) · [Refresh](#api-refresh) · [Run](#api-run) |
 | **Inspection** | [Status](#api-status) |
+
+## Portable evaluation
+
+<a id="api-new"></a>
+
+<a id="api-features.for"></a>
+
+<a id="api-features.enabled"></a>
+
+<a id="api-scope.evaluate"></a>
+
+### New · Features.For · Features.Enabled · Scope.Evaluate
+
+New wraps an initialized evaluator without I/O, global registration, or workers.
+
+For owns a target for repeated checks without mutating a shared client. Invalid targets are retained as a classified error for subsequent evaluations. A Scope captures targeting data, not a provider configuration snapshot.
+
+Enabled evaluates an untargeted flag with a false fallback.
+
+Evaluate explains a targeted flag with an explicit fallback.
+
+```go
+features := feature.New(engine)
+checkout := features.For(feature.Target{
+	Key:        "tenant:acme",
+	Kind:       "organization",
+	Attributes: map[string]any{"plan": "pro", "paid": true},
+})
+fmt.Println("Tenant checkout:", checkout.Enabled(ctx, "checkout-v2"))
+// Tenant checkout: true
+fmt.Println("Untargeted checkout:", features.Enabled(ctx, "checkout-v2"))
+// Untargeted checkout: false
+decision := checkout.Evaluate(ctx, "unknown-feature", true)
+fmt.Println("Explicit fallback:", decision.Value, decision.Reason)
+// Explicit fallback: true missing
+```
 
 ## Construction
 
