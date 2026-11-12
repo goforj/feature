@@ -1,0 +1,8 @@
+{
+  "covered_statements": 279,
+  "executed_programs": 4,
+  "passed_tests": 92,
+  "scope": "github.com/goforj/feature runtime package; tooling and executable scaffolding are not runtime library code",
+  "source_fingerprint": "978ab19c0be7465dd7e82c3c148d9bbd62a9800becadead169c0ec881bcf90eb",
+  "statements": 279
+}

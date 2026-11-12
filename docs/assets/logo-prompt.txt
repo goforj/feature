@@ -1,0 +1,9 @@
+Generated with the built-in imagegen tool, transparent PNG.
+Output: docs/assets/logo.png.
+Style references: goforj/search docs/assets/logo.png and goforj/cache docs/images/logo.png.
+Original generated output retained in the tool's generated-images directory.
+
+Prompt:
+Create a new original transparent PNG README mascot logo for the GoForj Go library named exactly "feature". The two local images are style references only, not edit targets. Match their blue Go gopher, huge white eyes, tiny cream muzzle and paws, deep navy outlines, subtle blue shading, white die-cut sticker border, integrated compact silhouette, and large rounded lowercase white wordmark with navy outline. New domain prop: the gopher holds a small navy flagpole with a bright blue waving flag bearing one simple white checkmark; beside its other paw is a single rounded on-toggle with a blue track and white circular knob. Exact lowercase text "feature" under the gopher and flag, readable at 300px wide, with a complete uncropped sticker border. No other words, no backdrop or shadows outside the silhouette. Actual transparent alpha background.
+
+Simple feature icons and status badges are repository-owned SVGs generated or authored as code, independent of this raster mascot.
