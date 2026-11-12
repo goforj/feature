@@ -21,7 +21,7 @@ func fixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	paths = append(paths, examples...)
-	drivers, err := filepath.Glob("../../driver/*/driver.go")
+	drivers, err := filepath.Glob("../../driver/*/*.go")
 	if err != nil {
 		t.Fatal(err)
 	}

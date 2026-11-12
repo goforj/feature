@@ -16,7 +16,7 @@ const (
 var (
 	// ErrUnavailable identifies a provider failure without exposing provider error text.
 	ErrUnavailable = errors.New("feature: provider unavailable")
-	// ErrTypeMismatch identifies a flag whose configured type is not boolean.
+	// ErrTypeMismatch identifies a flag whose configured type differs from the requested type.
 	ErrTypeMismatch = errors.New("feature: flag type mismatch")
 	// ErrClosed identifies evaluation through a closed driver.
 	ErrClosed = errors.New("feature: driver closed")
@@ -225,7 +225,7 @@ func (f *Features) resolve(ctx context.Context, key string, fallback bool, targe
 
 // safeError prevents custom provider errors from leaking untrusted service text.
 func safeError(err error) error {
-	for _, known := range []error{context.Canceled, context.DeadlineExceeded, ErrNotFound, ErrTypeMismatch, ErrClosed, ErrInvalidSubject, ErrInvalidKey, ErrUnavailable} {
+	for _, known := range []error{context.Canceled, context.DeadlineExceeded, ErrNotFound, ErrTypeMismatch, ErrClosed, ErrInvalidSubject, ErrInvalidKey, ErrInvalidValue, ErrUnsupported, ErrUnavailable} {
 		if errors.Is(err, known) {
 			return known
 		}

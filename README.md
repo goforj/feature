@@ -19,7 +19,7 @@
 <table>
 <thead><tr><th align="left" width="38%">Feature</th><th align="left">What you get</th></tr></thead>
 <tbody>
-<tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Boolean flags</td><td valign="middle">Explicit defaults, ordered rules, and exact identity and attribute matching.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Typed flags</td><td valign="middle">Boolean, string, integer, float, and object values with explicit fallbacks and ordered rules.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Consistent assignment per identity, flag, and salt.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/snapshot.svg" width="18" height="18" alt="" align="absmiddle"> Immutable snapshots</td><td valign="middle">One captured revision for every decision in a request or job.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/refresh.svg" width="18" height="18" alt="" align="absmiddle"> Live refresh</td><td valign="middle">Publish complete valid documents; retain the last valid snapshot after failures.</td></tr>
@@ -83,7 +83,7 @@ The optional adapters keep vendor dependencies and Go requirements outside the r
 | [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Official Relay Docker container, streaming, analytics forwarding, authentication, and outage recovery. |
 | [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | GO Feature Flag Docker service in remote and in-process modes; LaunchDarkly provider through its official Relay container. |
 
-Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
+Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. See the [capability matrix](docs/capabilities.md) for value types, integer precision, provider differences, and current implementation boundaries. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
 
 ## Runnable examples
 
@@ -92,6 +92,8 @@ Run from the repository root:
 ```sh
 go -C examples run ./quickstart   # Identity targeting and explicit fallback.
 go -C examples run ./portable     # Portable checks and typed request targeting.
+go -C examples run ./typed        # Typed values and explicit fallbacks.
+go -C examples run ./native-provider # Native engine through an ordinary OpenFeature SDK.
 go -C examples run ./targeting    # Attributes and stable percentage rollout.
 go -C examples run ./refresh      # File replacement and request snapshots.
 go -C examples run ./polling      # Owned, cancellable refresh loop.
@@ -116,8 +118,9 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 | Group | Functions |
 | ---: | :--- |
 | **Portable evaluation** | [New](#api-new) · [Features.For](#api-features.for) · [Features.Enabled](#api-features.enabled) · [Scope.Evaluate](#api-scope.evaluate) |
+| **Typed evaluation** | [Features.String](#api-features.string) · [Features.Int](#api-features.int) · [Features.Float](#api-features.float) · [Features.Object](#api-features.object) |
 | **LaunchDarkly** | [launchdarklyfeature.New](#api-launchdarklyfeature.new) · [launchdarklyfeature.Open](#api-launchdarklyfeature.open) |
-| **OpenFeature** | [openfeaturefeature.Open](#api-openfeaturefeature.open) · [openfeaturefeature.New](#api-openfeaturefeature.new) |
+| **OpenFeature** | [openfeaturefeature.Open](#api-openfeaturefeature.open) · [openfeaturefeature.New](#api-openfeaturefeature.new) · [openfeaturefeature.NewProvider](#api-openfeaturefeature.newprovider) |
 | **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
 | **Evaluation** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
 | **Consistency** | [Snapshot](#api-snapshot) |
@@ -159,6 +162,38 @@ fmt.Println("Untargeted checkout:", features.Enabled(ctx, "checkout-v2"))
 decision := checkout.Evaluate(ctx, "unknown-feature", true)
 fmt.Println("Explicit fallback:", decision.Value, decision.Reason)
 // Explicit fallback: true missing
+```
+
+## Typed evaluation
+
+<a id="api-features.string"></a>
+
+<a id="api-features.int"></a>
+
+<a id="api-features.float"></a>
+
+<a id="api-features.object"></a>
+
+### Features.String · Features.Int · Features.Float · Features.Object
+
+String returns a typed decision with an explicit fallback.
+
+Int returns a typed decision with an explicit fallback.
+
+Float returns a typed decision with an explicit fallback.
+
+Object returns a typed decision with an explicit fallback.
+
+```go
+fmt.Println("Theme:", flags.String(ctx, "theme", "classic").Value)
+// Theme: classic
+fmt.Println("Page size:", flags.Int(ctx, "page-size", 10).Value)
+// Page size: 25
+fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
+// Sample rate: 0.25
+layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
+fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
+// Columns: 2
 ```
 
 ## LaunchDarkly
@@ -229,6 +264,28 @@ defer borrowed.Close()
 flags := feature.New(borrowed)
 fmt.Println("Borrowed checkout:", flags.Enabled(ctx, "checkout-v2"))
 // Borrowed checkout: true
+```
+
+<a id="api-openfeaturefeature.newprovider"></a>
+
+### openfeaturefeature.NewProvider
+
+NewProvider exposes an initialized engine without global registration or a second update loop.
+
+```go
+provider := openfeaturefeature.NewProvider(engine)
+api := isolated.NewAPI()
+defer api.Shutdown(ctx)
+if err := api.SetProviderAndWait(ctx, provider); err != nil {
+	panic(err)
+}
+sdk := api.NewClient()
+theme, err := sdk.StringValue(ctx, "theme", "classic", openfeature.NewTargetlessEvaluationContext(nil))
+if err != nil {
+	panic(err)
+}
+fmt.Println("OpenFeature theme:", theme)
+// OpenFeature theme: blue
 ```
 
 ## Construction

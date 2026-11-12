@@ -8,7 +8,7 @@ Resolve calls the SDK client rather than calling a provider directly, preserving
 
 An empty Target.Key allows identity to be inherited from the SDK's configured API, transaction, or client context. Providers decide whether an identity is required. Use Features.For when each request or job needs its own explicit identity and attributes.
 
-This adapter supports boolean evaluation. It is not a complete implementation of the OpenFeature specification, a guarantee of every provider's capabilities, or a promise that every evaluation is local. Providers can perform network I/O. Request targeting scopes do not freeze provider configuration.
+This adapter supports boolean, string, integer, float, and structured evaluation. NewProvider exposes an injected native engine or other evaluator to ordinary OpenFeature SDK consumers, without owning its refresh or shutdown. See the [native provider program](../../examples/native-provider/main.go). Numeric interpretation remains provider-specific. It is not a complete implementation of the OpenFeature specification, a guarantee of every provider's capabilities, or a promise that every evaluation is local. Providers can perform network I/O. Request targeting scopes do not freeze provider configuration.
 
 Run from the repository checkout:
 

@@ -19,7 +19,7 @@
 <table>
 <thead><tr><th align="left" width="38%">Feature</th><th align="left">What you get</th></tr></thead>
 <tbody>
-<tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Boolean flags</td><td valign="middle">Explicit defaults, ordered rules, and exact identity and attribute matching.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Typed flags</td><td valign="middle">Boolean, string, integer, float, and object values with explicit fallbacks and ordered rules.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Consistent assignment per identity, flag, and salt.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/snapshot.svg" width="18" height="18" alt="" align="absmiddle"> Immutable snapshots</td><td valign="middle">One captured revision for every decision in a request or job.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/refresh.svg" width="18" height="18" alt="" align="absmiddle"> Live refresh</td><td valign="middle">Publish complete valid documents; retain the last valid snapshot after failures.</td></tr>
@@ -62,7 +62,7 @@ The optional adapters keep vendor dependencies and Go requirements outside the r
 | [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Official Relay Docker container, streaming, analytics forwarding, authentication, and outage recovery. |
 | [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | GO Feature Flag Docker service in remote and in-process modes; LaunchDarkly provider through its official Relay container. |
 
-Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
+Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. See the [capability matrix](docs/capabilities.md) for value types, integer precision, provider differences, and current implementation boundaries. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
 
 ## Runnable examples
 
@@ -71,6 +71,8 @@ Run from the repository root:
 ```sh
 go -C examples run ./quickstart   # Identity targeting and explicit fallback.
 go -C examples run ./portable     # Portable checks and typed request targeting.
+go -C examples run ./typed        # Typed values and explicit fallbacks.
+go -C examples run ./native-provider # Native engine through an ordinary OpenFeature SDK.
 go -C examples run ./targeting    # Attributes and stable percentage rollout.
 go -C examples run ./refresh      # File replacement and request snapshots.
 go -C examples run ./polling      # Owned, cancellable refresh loop.

@@ -105,9 +105,11 @@ type wireDocument struct {
 
 // wireFlag distinguishes an explicit false default from an omitted default.
 type wireFlag struct {
-	Default  *bool      `json:"default"`
-	Disabled bool       `json:"disabled"`
-	Rules    []wireRule `json:"rules"`
+	Default  json.RawMessage `json:"default"`
+	Disabled bool            `json:"disabled"`
+	Rules    []wireRule      `json:"rules"`
+	Type     ValueType       `json:"type"`
+	Off      json.RawMessage `json:"off"`
 }
 
 // wireRule preserves required values and rollout percentages while decoding.
@@ -115,13 +117,25 @@ type wireRule struct {
 	Subjects   []string          `json:"subjects"`
 	Attributes map[string]string `json:"attributes"`
 	Rollout    *wireRollout      `json:"rollout"`
-	Value      *bool             `json:"value"`
+	Value      json.RawMessage   `json:"value"`
 }
 
 // wireRollout prevents an omitted percentage from silently becoming zero.
 type wireRollout struct {
 	BasisPoints *int   `json:"basis_points"`
 	Salt        string `json:"salt"`
+}
+
+// Encode validates and serializes normalized definitions with stable type annotations.
+// Use Encode when persisting Go documents; it preserves boolean zero values and
+// distinguishes integral floating-point defaults from integer defaults.
+func Encode(doc Document) ([]byte, error) {
+	state, err := compile(doc)
+	if err != nil {
+		return nil, err
+	}
+	data, _ := json.Marshal(state.document)
+	return data, nil
 }
 
 // Decode validates bounded strict JSON, including duplicate keys and required fields.
@@ -131,7 +145,16 @@ func Decode(data []byte) (Document, error) {
 		return Document{}, ErrInvalidDocument
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	if err := scanJSON(decoder, "document", 0); err != nil {
+	var header struct {
+		Schema int `json:"schema"`
+	}
+	// This selects a scanner grammar only; the scanner and wire decoder validate the document.
+	_ = json.Unmarshal(data, &header)
+	kind := "document"
+	if header.Schema == TypedSchemaVersion {
+		kind = "document2"
+	}
+	if err := scanJSON(decoder, kind, 0); err != nil {
 		return Document{}, ErrInvalidDocument
 	}
 	if _, err := decoder.Token(); err != io.EOF {
@@ -149,12 +172,26 @@ func Decode(data []byte) (Document, error) {
 		if flag.Default == nil {
 			return Document{}, ErrInvalidDocument
 		}
-		value := Flag{Default: *flag.Default, Disabled: flag.Disabled}
+		defaultValue := decodeValue(flag.Default)
+		if defaultValue == nil {
+			return Document{}, ErrInvalidDocument
+		}
+		value := Flag{Default: defaultValue, Disabled: flag.Disabled, Type: flag.Type}
+		if flag.Off != nil {
+			value.Off = decodeValue(flag.Off)
+			if value.Off == nil {
+				return Document{}, ErrInvalidDocument
+			}
+		}
 		for _, rule := range flag.Rules {
 			if rule.Value == nil {
 				return Document{}, ErrInvalidDocument
 			}
-			next := Rule{Subjects: rule.Subjects, Attributes: rule.Attributes, Value: *rule.Value}
+			ruleValue := decodeValue(rule.Value)
+			if ruleValue == nil {
+				return Document{}, ErrInvalidDocument
+			}
+			next := Rule{Subjects: rule.Subjects, Attributes: rule.Attributes, Value: ruleValue}
 			if rule.Rollout != nil {
 				if rule.Rollout.BasisPoints == nil {
 					return Document{}, ErrInvalidDocument
@@ -174,11 +211,11 @@ func Decode(data []byte) (Document, error) {
 
 // scanJSON rejects ambiguous keys, unexpected fields, nulls, and excessive nesting.
 func scanJSON(decoder *json.Decoder, kind string, depth int) error {
-	if depth > 8 {
+	if depth > 16 {
 		return ErrInvalidDocument
 	}
 	token, err := decoder.Token()
-	if err != nil || token == nil {
+	if err != nil || (token == nil && kind != "value") {
 		return ErrInvalidDocument
 	}
 	switch token {
@@ -190,7 +227,7 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 				return ErrInvalidDocument
 			}
 			key := token.(string)
-			if kind == "flags" && len(seen) >= MaxFlags || kind == "attributes" && len(seen) >= MaxAttributes {
+			if (kind == "flags" || kind == "flags2") && len(seen) >= MaxFlags || kind == "attributes" && len(seen) >= MaxAttributes || kind == "value" && len(seen) >= MaxSubjects {
 				return ErrInvalidDocument
 			}
 			if seen[key] {
@@ -210,13 +247,19 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 	case json.Delim('['):
 		count := 0
 		for decoder.More() {
-			if kind == "rules" && count >= MaxRules || kind == "subjects" && count >= MaxSubjects {
+			if (kind == "rules" || kind == "rules2") && count >= MaxRules || kind == "subjects" && count >= MaxSubjects || kind == "value" && count >= MaxSubjects {
 				return ErrInvalidDocument
 			}
 			count++
 			next := "scalar"
 			if kind == "rules" {
 				next = "rule"
+			}
+			if kind == "rules2" {
+				next = "rule2"
+			}
+			if kind == "value" {
+				next = "value"
 			}
 			if err := scanJSON(decoder, next, depth+1); err != nil {
 				return err
@@ -232,6 +275,28 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 // fieldKind keeps structural field names case-sensitive while allowing dynamic inventories.
 func fieldKind(kind, key string) (string, bool) {
 	switch kind {
+	case "document2":
+		if key == "flags" {
+			return "flags2", true
+		}
+		return "scalar", key == "schema"
+	case "flags2":
+		return "flag2", true
+	case "flag2":
+		if key == "default" || key == "off" {
+			return "value", true
+		}
+		if key == "rules" {
+			return "rules2", true
+		}
+		return "scalar", key == "type" || key == "disabled"
+	case "rule2":
+		if key == "value" {
+			return "value", true
+		}
+		return key, key == "subjects" || key == "attributes" || key == "rollout"
+	case "value":
+		return "value", true
 	case "document":
 		return key, key == "schema" || key == "flags"
 	case "flags":
@@ -247,4 +312,14 @@ func fieldKind(kind, key string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+// decodeValue retains numeric text until the declared flag type can validate it.
+func decodeValue(data []byte) any {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	var value any
+	// The complete document was already checked by both the scanner and typed decoder.
+	_ = decoder.Decode(&value)
+	return value
 }

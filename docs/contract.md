@@ -1,6 +1,6 @@
 # Behavior contract
 
-`feature` is a standalone server-side boolean feature evaluator. Clients are explicitly injected; no package-global client or process-environment mutation is involved.
+`feature` is a standalone server-side typed feature evaluator. Clients are explicitly injected; no package-global client or process-environment mutation is involved.
 
 ## Ownership and lifecycle
 
@@ -122,3 +122,15 @@ SDK adapters expose Close on their concrete drivers. New borrows its SDK client;
 OpenFeature Open honors cancellation observed before publishing a successfully initialized driver. Cleanup supplies a five-second context deadline, but context-aware provider implementations must cooperate with it. Legacy provider shutdown has no context parameter, so the SDK cannot impose a hard timeout on such a provider. Applications must supply bounded initialization contexts and providers with appropriate shutdown behavior. LaunchDarkly shutdown uses the native SDK's configured flush and timeout policy.
 
 LaunchDarkly also preserves cancellation when SDK construction fails, after disposing of any partial client. Its initialization budget does not forcibly interrupt synchronous native component factories; custom SDK factories must bound their own I/O.
+
+## Typed values and schema 2
+
+Schema 1 remains strict and boolean-only. Schema 2 uses the same flags inventory with boolean, string, integer, float, and structured defaults and rule results. A flag may declare type explicitly as boolean, string, integer, float, or object. Encode normalizes type annotations before persistence, preserving the distinction between integer 1 and floating-point 1.0. Raw JSON writers should declare numeric types explicitly.
+
+Defaults, rule results, and optional off values must have the same type. Disabled booleans default to false; disabled non-boolean flags require an explicit off value. Objects and arrays may contain null, booleans, strings, finite numbers, nested objects, and arrays. Standalone null flag values are rejected. Each owned value is bounded to 64 KiB and eight nested container levels, and container lengths are bounded to 1024. The complete compiled document remains bounded to 1 MiB.
+
+Features and Scope expose String, Int, Float, and Object with explicit fallbacks and Result values. Wrong-type requests return ErrTypeMismatch. Drivers without the optional TypedEvaluator contract return ErrUnsupported. Mutable fallback and successful object containers are copied. Native View has matching typed reads against one immutable revision. Native counters include typed reads through Client.
+
+Native integers retain int64 precision. The direct LaunchDarkly adapter rejects integer values outside the exact IEEE-754 range or with a fractional component. Other SDK providers retain their numeric semantics. The [capability matrix](capabilities.md) records these differences.
+
+The optional OpenFeature module also supplies NewProvider: ordinary OpenFeature clients can evaluate the injected engine through the standard provider contract. Provider shutdown disables its binding without closing its borrowed engine. No global registration or competing refresh loop is introduced.

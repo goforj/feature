@@ -52,36 +52,8 @@ func (v *View) Enabled(ctx context.Context, key string, fallback bool, subject S
 
 // Evaluate explains one local decision without logging identities or attributes.
 func (v *View) Evaluate(ctx context.Context, key string, fallback bool, subject Subject) Decision {
-	decision := Decision{Value: fallback, Reason: ReasonError, Revision: v.state.revision}
-	if err := ctx.Err(); err != nil {
-		decision.Err = err
-		return decision
-	}
-	if !validKey(key) {
-		decision.Err = ErrInvalidKey
-		return decision
-	}
-	if !validString(subject.Key) || !validAttributes(subject.Attributes) {
-		decision.Err = ErrInvalidSubject
-		return decision
-	}
-	flag, ok := v.state.document.Flags[key]
-	if !ok {
-		decision.Reason, decision.Err = ReasonMissing, ErrNotFound
-		return decision
-	}
-	decision.Value, decision.Reason = flag.Default, ReasonDefault
-	if flag.Disabled {
-		decision.Value, decision.Reason = false, ReasonDisabled
-		return decision
-	}
-	for _, rule := range flag.Rules {
-		if matches(rule, key, subject) {
-			decision.Value, decision.Reason = rule.Value, ReasonRule
-			return decision
-		}
-	}
-	return decision
+	result := evaluateNative(v, ctx, key, fallback, TypeBoolean, subject)
+	return Decision{Value: result.Value, Reason: result.Reason, Revision: result.Revision, Variant: result.Variant, Err: result.Err}
 }
 
 // matches requires every condition, with missing identities excluded from rollouts.

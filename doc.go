@@ -1,7 +1,8 @@
-// Package feature provides portable boolean feature decisions and a native flag engine.
+// Package feature provides portable typed feature decisions and a native flag engine.
 //
 // New borrows an initialized Evaluator. Features provides short checks and typed
-// request targeting through For. Native Client implements Evaluator while retaining
+// request targeting through For. String, Int, Float, and Object retain explicit
+// fallbacks and detailed results. Native Client implements TypedEvaluator while retaining
 // its source, refresh, status, and genuine immutable snapshot contracts.
 //
 // Open loads a complete source synchronously. Applications own the refresh lifecycle:

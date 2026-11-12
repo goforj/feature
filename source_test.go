@@ -20,7 +20,7 @@ func TestDecodeStrictDocument(t *testing.T) {
 		`{ "schema": 1, "flags": {}, "schema": 1 }`,
 		`{ "schema": 1, "flags": {"checkout": {"default": false, "default": true}} }`,
 		`{ "schema": 1, "flags": {"checkout": {"default": false, "rules": [{"attributes":{"x":"a","x":"b"},"value":true}]}} }`,
-		`{ "schema": 2, "flags": {} }`, `{ "flags": {} }`, `{ "schema": 1 }`,
+		`{ "schema": 999, "flags": {} }`, `{ "flags": {} }`, `{ "schema": 1 }`,
 		`{ "schema": 1, "flags": null }`, `{ "schema": 1, "flags": [] }`,
 		`{ "schema": 1, "flags": {"checkout": {}} }`,
 		`{ "schema": 1, "flags": {"checkout": {"default": null}} }`,

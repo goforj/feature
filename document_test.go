@@ -24,7 +24,7 @@ func TestCompileValidatesEveryBoundary(t *testing.T) {
 		name   string
 		change func(*Document)
 	}{
-		{"schema", func(d *Document) { d.Schema = 2 }},
+		{"schema", func(d *Document) { d.Schema = 999 }},
 		{"missing flags", func(d *Document) { d.Flags = nil }},
 		{"too many flags", func(d *Document) {
 			for i := 0; i <= MaxFlags; i++ {

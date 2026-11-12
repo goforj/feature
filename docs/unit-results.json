@@ -1,9 +1,9 @@
 {
-  "covered_statements": 565,
-  "executed_programs": 7,
+  "covered_statements": 1041,
+  "executed_programs": 9,
   "go_version": "go version go1.27.4 darwin/arm64",
-  "passed_tests": 176,
+  "passed_tests": 188,
   "scope": "all first-party runtime packages in the published root and driver modules; tooling, integration harness, and executable scaffolding are separate",
-  "source_fingerprint": "575f5df6a1c3c10c2544b274628d2bad926253efbb9e536d581452f9cf2aac41",
-  "statements": 565
+  "source_fingerprint": "723e914445626e8430cf13c55ce7a8b5c64d0aba54c058b1ba3d546d888a3abd",
+  "statements": 1041
 }

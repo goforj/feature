@@ -10,6 +10,8 @@ Direct LaunchDarkly checks require a nonempty Target.Key, or valid child keys in
 
 Successful off-variations are preserved, including true values. Resolve returns a safe classified error, a reason, and a variation index when available; it does not fabricate a native document revision or frozen snapshot.
 
+String, Int, Float, and Object provide typed decisions through the same scoped client. Integer evaluation rejects fractions and values outside the exact IEEE-754 integer range of minus (2^53-1) through 2^53-1. Object and array results are owned copies with portable value bounds.
+
 Run from the repository checkout:
 
 ```sh

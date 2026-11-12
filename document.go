@@ -12,6 +12,9 @@ import (
 // SchemaVersion identifies the supported document and rollout contracts.
 const SchemaVersion = 1
 
+// TypedSchemaVersion enables typed defaults and off-values without changing schema 1.
+const TypedSchemaVersion = 2
+
 const (
 	// MaxDocumentBytes bounds JSON input and compiled document size.
 	MaxDocumentBytes = 1 << 20
@@ -52,19 +55,24 @@ type Document struct {
 	Flags  map[string]Flag `json:"flags"`
 }
 
-// Flag defines a boolean default and ordered rules; Disabled forces false.
+// Flag defines an explicit default and ordered rules of one value type.
+// Schema 1 is boolean-only. Schema 2 infers Type when omitted; set TypeFloat
+// explicitly when encoding integral floating-point definitions outside Encode.
+// Disabled boolean flags default to false; other disabled types require Off.
 type Flag struct {
-	Default  bool   `json:"default"`
-	Disabled bool   `json:"disabled,omitempty"`
-	Rules    []Rule `json:"rules,omitempty"`
+	Default  any       `json:"default"`
+	Disabled bool      `json:"disabled,omitempty"`
+	Rules    []Rule    `json:"rules,omitempty"`
+	Type     ValueType `json:"type,omitempty"`
+	Off      any       `json:"off,omitempty"`
 }
 
-// Rule returns Value when every supplied condition matches.
+// Rule returns a value of its flag's type when every supplied condition matches.
 type Rule struct {
 	Subjects   []string          `json:"subjects,omitempty"`
 	Attributes map[string]string `json:"attributes,omitempty"`
 	Rollout    *Rollout          `json:"rollout,omitempty"`
-	Value      bool              `json:"value"`
+	Value      any               `json:"value"`
 }
 
 // Rollout selects stable identity buckets using a required, non-secret salt.
@@ -87,13 +95,23 @@ type compiled struct {
 
 // compile validates before allocating an owned normalized document.
 func compile(doc Document) (*compiled, error) {
-	if doc.Schema != SchemaVersion || doc.Flags == nil || len(doc.Flags) > MaxFlags {
+	if (doc.Schema != SchemaVersion && doc.Schema != TypedSchemaVersion) || doc.Flags == nil || len(doc.Flags) > MaxFlags {
 		return nil, ErrInvalidDocument
 	}
 	budget := 64
 	for key, flag := range doc.Flags {
 		if !validKey(key) || len(flag.Rules) > MaxRules {
 			return nil, ErrInvalidDocument
+		}
+		normalized, err := normalizeFlag(flag, doc.Schema)
+		if err != nil {
+			return nil, ErrInvalidDocument
+		}
+		if doc.Schema == TypedSchemaVersion {
+			budget += valueBytes(normalized.Default) + valueBytes(normalized.Off)
+			for _, rule := range flag.Rules {
+				budget += valueBytes(rule.Value)
+			}
 		}
 		budget += len(key)*6 + 64
 		if budget > MaxDocumentBytes {
@@ -127,7 +145,7 @@ func compile(doc Document) (*compiled, error) {
 		}
 	}
 	owned := cloneDocument(doc)
-	// Only strings, booleans, and validated integers reach the encoder.
+	// Every value is JSON-compatible and the conservative budget bounds canonical encoding.
 	data, _ := json.Marshal(owned)
 	hash := sha256.Sum256(data)
 	return &compiled{document: owned, revision: hex.EncodeToString(hash[:])}, nil
@@ -137,9 +155,15 @@ func compile(doc Document) (*compiled, error) {
 func cloneDocument(doc Document) Document {
 	owned := Document{Schema: doc.Schema, Flags: make(map[string]Flag, len(doc.Flags))}
 	for key, flag := range doc.Flags {
-		copyFlag := Flag{Default: flag.Default, Disabled: flag.Disabled}
+		copyFlag, _ := normalizeFlag(flag, doc.Schema)
+		copyFlag.Rules = nil
 		for _, rule := range flag.Rules {
-			copyRule := Rule{Value: rule.Value, Subjects: append([]string(nil), rule.Subjects...)}
+			value := rule.Value
+			if value == nil && (doc.Schema == SchemaVersion || copyFlag.Type == TypeBoolean) {
+				value = false
+			}
+			value, _ = CopyValue(value, flagType(copyFlag))
+			copyRule := Rule{Value: value, Subjects: append([]string(nil), rule.Subjects...)}
 			sort.Strings(copyRule.Subjects)
 			if len(rule.Attributes) > 0 {
 				copyRule.Attributes = make(map[string]string, len(rule.Attributes))
