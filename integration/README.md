@@ -1,0 +1,13 @@
+# Integration tests
+
+Run `make test-integration` from the repository root with Docker available. The suite starts one digest-pinned GO Feature Flag relay per package run, verifies its running version, and terminates it after the tests, including partial startup failures. Testcontainers also owns its host-forwarding helper and resource reaper. Missing Docker is a failure, never a skip. Tests use fake keys and isolated flag namespaces; no hosted credentials are loaded.
+
+The shared nine-case contract runs against native memory, the official LaunchDarkly SDK, OpenFeature with the LaunchDarkly provider, and OpenFeature with a real GO Feature Flag relay in both remote and in-process modes. It checks true, successful false, both missing-flag fallbacks, identity targeting, owned attributes, cancellation, concurrent decisions, and live updates.
+
+Additional tests exercise real file replacement and deletion, invalid-document retention, request snapshots during concurrent refresh, refresh-worker shutdown, typed remote targeting, real relay authentication, malformed HTTP success, a failed network boundary and recovery, cancellation during an HTTP response, and in-process last-valid configuration. A reverse proxy injects transport failures in front of the actual relay; those fault injections do not replace service-backed success tests.
+
+LaunchDarkly tests use its real server SDK with native rule data and local HTTP streaming and analytics fixtures. They cover updates, off-variation preservation, malformed payloads, disconnected streams, analytics delivery on close, initialization failure, cancellation, and borrowed-client ownership. They do not establish hosted LaunchDarkly account, environment, or credential verification.
+
+The relay fetches full JSON flag documents from a local HTTP fixture. Testcontainers opens its forwarding tunnel after container readiness, so the relay explicitly retries initial retrieval. Tests wait for actual flag visibility before asserting behavior. The service image and SDK/provider versions are pinned in [versions.json](versions.json) and module requirements.
+
+`make record-integration` updates the tracked execution report only after the complete required suite passes. `INTEGRATION_RUN='TestDriverConformance/openfeature-goff-remote' make test-integration` runs a focused case and writes separate focused artifacts. It cannot overwrite full-suite evidence. Raw JSON events, coverage, and reports are under `.artifacts/`; [the tracked report](../docs/integration-results.json) records the tested source fingerprint and exact passed case count. Integration coverage is never merged into the unit coverage gate.

@@ -81,3 +81,36 @@ jobs:
           flags: unit
           disable_search: true
           fail_ci_if_error: true
+
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - name: Require real container and SDK integrations with race detection
+        run: make test-integration
+      - name: Check optional Codecov configuration
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload integration-only coverage
+        if: steps.codecov.outputs.configured == 'true'
+        uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: .artifacts/integration.cover
+          flags: integration
+          disable_search: true
+          fail_ci_if_error: true

@@ -16,6 +16,10 @@ func main() {
 			err = fmt.Errorf("usage: maintain generate|check-generated|test-unit|record-unit")
 		} else {
 			switch os.Args[1] {
+			case "test-integration":
+				err = devtools.TestIntegration(root, false, os.Stdout)
+			case "record-integration":
+				err = devtools.TestIntegration(root, true, os.Stdout)
 			case "modules-check":
 				err = devtools.CheckModules(root)
 			case "test-all":

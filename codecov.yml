@@ -17,3 +17,5 @@ coverage:
 flags:
   unit:
     carryforward: false
+  integration:
+    carryforward: false

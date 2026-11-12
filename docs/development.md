@@ -27,7 +27,7 @@ make generate
 make check-generated
 ```
 
-Tests use real temporary files for native file-source behavior. There is no service-backed driver or separate service integration suite. Memory and file source behavior, including failure recovery, is exercised in ordinary unit tests. Linux CI and local macOS runs execute the same suite; CI also verifies the minimum Go line.
+Tests use real temporary files for native file-source behavior and the actual vendor SDKs for adapters. `make test-integration` additionally requires Docker and runs the [real-service and SDK transport suite](../integration). `make test-coverage` runs both gates with separate profiles. `make record-integration` records full-suite evidence; focused `INTEGRATION_RUN` executions cannot overwrite that report. Linux CI and local macOS runs execute the same suite; CI separately verifies each runtime module's minimum Go line.
 
 The unit runner executes Go tests and all canonical example programs, instruments example subprocesses against the root library package, and merges their coverage. It requires exact coverage of every statement in the runtime library package. Program scaffolding and Go build tooling are validated separately rather than represented as covered runtime code. Each run writes executed case counts, covered statement counts, toolchain identity, and source fingerprint under .artifacts. Use make record-unit to update docs/unit-results.json deliberately after source changes. Statement totals can differ between Go versions; every run must independently achieve exact full coverage without rewriting evidence recorded on another toolchain. No integration run supplies missing unit coverage.
 

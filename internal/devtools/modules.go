@@ -89,7 +89,7 @@ func EachModule(root, operation string) error {
 		return err
 	}
 	for _, module := range modules {
-		if module.Directory == "integration" {
+		if module.Directory == "integration" && operation != "tidy" && operation != "vet" {
 			continue
 		}
 		arguments := []string{operation, "./..."}
@@ -98,6 +98,9 @@ func EachModule(root, operation string) error {
 			arguments = []string{"test", "-race", "./..."}
 		case "tidy":
 			arguments = []string{"mod", "tidy"}
+		}
+		if module.Directory == "integration" && operation == "vet" {
+			arguments = []string{"vet", "-tags=integration", "./..."}
 		}
 		output, err := goCommand(filepath.Join(root, module.Directory), append(os.Environ(), "GOWORK=off"), arguments...)
 		fmt.Print(string(output))

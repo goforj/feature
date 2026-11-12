@@ -80,10 +80,10 @@ The optional adapters keep vendor dependencies and Go requirements outside the r
 
 | Driver | Constructors | Minimum Go | Verification |
 | :--- | :--- | :--- | :--- |
-| [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Real SDK unit tests and exact full adapter coverage. |
-| [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | SDK hooks, context precedence, lifecycle, and exact full adapter coverage. |
+| [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Real SDK, local streaming and analytics, startup failures, and shutdown. |
+| [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | Real GO Feature Flag Docker service in remote and in-process modes, plus the LaunchDarkly provider. |
 
-Container-backed service integration is being added separately; SDK tests do not establish hosted-account verification. Features is the portable application API; native Client retains source refresh and genuine snapshots.
+Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
 
 ## Runnable examples
 
@@ -343,6 +343,7 @@ fmt.Println("Refresh healthy:", status.LastError == nil && !status.LastSuccess.I
 ```sh
 make test-unit       # Execute tests and examples; require exact library coverage.
 make test-race       # Include race instrumentation in executable examples.
+make test-integration # Require Docker; test real services and SDK transports.
 make vet
 make record-unit     # Refresh tracked evidence after relevant source changes.
 make generate
@@ -351,4 +352,4 @@ make check-generated
 
 See [development](docs/development.md) for module ownership, validation commands, and publication status. Framework integration, hosted providers, and administration interfaces are separate from this standalone library.
 
-The [remaining-work checklist](docs/roadmap.md) tracks library review, provider drivers, real-App validation, GoForj integration, and release preparation. The [provider study](docs/provider-study.md) records the proposed direction and tested SDK behavior; the initial SDK adapters are implemented, with service integration work tracked separately.
+The [remaining-work checklist](docs/roadmap.md) tracks library review, real-App validation, GoForj integration, and release preparation. The [provider study](docs/provider-study.md) records the design research; both initial SDK adapters and their local service integration suites are implemented.

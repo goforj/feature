@@ -1,4 +1,4 @@
-.PHONY: test test-unit record-unit test-race test-coverage vet tidy modules-check generate check-generated test-tools
+.PHONY: test test-unit record-unit test-race test-integration record-integration test-coverage vet tidy modules-check generate check-generated test-tools
 
 test:
 	go run ./tools/maintain test-all
@@ -9,7 +9,13 @@ test-unit:
 record-unit:
 	go run ./tools/maintain record-unit
 
-test-coverage: test-unit
+test-integration:
+	go run ./tools/maintain test-integration
+
+record-integration:
+	go run ./tools/maintain record-integration
+
+test-coverage: test-unit test-integration
 
 test-race:
 	go run ./tools/maintain test-race

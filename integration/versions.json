@@ -1,0 +1,11 @@
+{
+  "go-feature-flag": {
+    "version": "1.58.1",
+    "image": "gofeatureflag/go-feature-flag:v1.58.1@sha256:07642044fc75a8ce4598e80bf626122ce25f03d3c7bf0b10a7828efeecea6dae"
+  },
+  "launchdarkly-go-sdk": "v7.22.0",
+  "openfeature-go-sdk": "v1.20.0",
+  "openfeature-go-feature-flag-provider": "v1.1.3",
+  "openfeature-launchdarkly-provider": "v0.2.0",
+  "testcontainers-go": "v0.39.0"
+}
