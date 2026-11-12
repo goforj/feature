@@ -1,14 +1,14 @@
 # Development
 
-This checkout contains one module, github.com/goforj/feature, with a Go 1.24 minimum. The root module has no external requirements. Canonical executable examples share the module. Documentation and coverage tooling use the same standard-library Go toolchain as the library.
+The root module has a Go 1.24 minimum and no external requirements. Optional LaunchDarkly and OpenFeature driver modules require Go 1.25 and 1.26 respectively. scripts/module-manifest.txt owns the complete inventory. Canonical executable examples currently share the root module. Documentation and coverage tooling use the same standard-library Go toolchain as the library.
 
 ## Scope and implementation decision
 
 The initial workflow is a local boolean decision with exact targeting, stable percentages, complete immutable snapshots, and explicit live refresh. Memory and regular-file JSON sources are the complete initial source catalog. No framework packages or deployment services are required.
 
-The first implementation uses a native evaluator with no external runtime dependencies. The subsequent [provider study](provider-study.md) examines multiple SDKs, inspects their source, and executes pinned local SDK probes. It proposes a provider-neutral core plus optional direct LaunchDarkly and OpenFeature drivers. Those drivers are not implemented yet. No claim of hosted-provider interchangeability or OpenFeature conformance is made.
+The first implementation uses a native evaluator with no external runtime dependencies. The subsequent [provider study](provider-study.md) examines multiple SDKs, inspects their source, and executes pinned local SDK probes. It proposes a provider-neutral core plus optional direct LaunchDarkly and OpenFeature drivers. The initial adapters are implemented and their unit suites enforce exact full runtime coverage. Service integration validation is a separate gate. No claim of hosted-provider interchangeability or OpenFeature conformance is made.
 
-The implementation follows the GoForj feature-flags proposal, with Open replacing the proposed I/O-performing New constructor. Source constructors remain explicit and do not perform filesystem I/O. Framework integration, hosted sources, write APIs, release publication, and external service setup remain outside this local library build.
+The implementation follows the GoForj feature-flags proposal, with Open replacing the proposed I/O-performing New constructor. Source constructors remain explicit and do not perform filesystem I/O. Framework integration, write APIs, release publication, and hosted account setup remain separate. SDK drivers and container-backed integration are in scope for the current library build.
 
 ## Commands
 

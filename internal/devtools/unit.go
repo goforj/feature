@@ -50,7 +50,8 @@ func MergeCoverage(profiles ...[]byte) ([]byte, int, int, error) {
 			}
 			location := fields[0]
 			relative := strings.TrimPrefix(location, "github.com/goforj/feature/")
-			if strings.Contains(strings.SplitN(relative, ":", 2)[0], "/") {
+			filename := strings.SplitN(relative, ":", 2)[0]
+			if strings.HasPrefix(filename, "internal/devtools/") || strings.HasPrefix(filename, "tools/") || strings.HasPrefix(filename, "examples/") || strings.HasPrefix(filename, "integration/") || strings.HasPrefix(filename, "searchtest/") {
 				continue
 			}
 			var size, count int
@@ -102,7 +103,36 @@ func TestUnit(root string, record bool, output io.Writer) error {
 		return err
 	}
 	environment := append(os.Environ(), "GOWORK=off", "FEATURE_EXAMPLE_COVERAGE_DIR="+coverage)
-	events, runErr := goCommand(root, environment, "test", "-json", "-count=1", "-coverpkg=github.com/goforj/feature", "-coverprofile="+filepath.Join(artifacts, "root.cover"), "./...")
+	modules, err := Modules(root)
+	if err != nil {
+		return err
+	}
+	var events []byte
+	var profiles [][]byte
+	var runErr error
+	for index, module := range modules {
+		if module.Directory == "integration" {
+			continue
+		}
+		profile := filepath.Join(artifacts, fmt.Sprintf("unit-%d.cover", index))
+		arguments := []string{"test", "-json", "-count=1", "./..."}
+		if module.Kind == "published" {
+			arguments = []string{"test", "-json", "-count=1", "-coverpkg=github.com/goforj/feature/...", "-coverprofile=" + profile, "./..."}
+		}
+		output, testErr := goCommand(filepath.Join(root, module.Directory), environment, arguments...)
+		events = append(events, output...)
+		if testErr != nil {
+			runErr = testErr
+			break
+		}
+		if module.Kind == "published" {
+			data, err := os.ReadFile(profile)
+			if err != nil {
+				return err
+			}
+			profiles = append(profiles, data)
+		}
+	}
 	if err := os.WriteFile(filepath.Join(artifacts, "unit.json"), events, 0644); err != nil {
 		return err
 	}
@@ -133,15 +163,12 @@ func TestUnit(root string, record bool, output io.Writer) error {
 	if _, err := goCommand(root, environment, "tool", "covdata", "textfmt", "-i="+coverage, "-o="+filepath.Join(artifacts, "examples.cover")); err != nil {
 		return err
 	}
-	native, err := os.ReadFile(filepath.Join(artifacts, "root.cover"))
-	if err != nil {
-		return err
-	}
 	examples, err := os.ReadFile(filepath.Join(artifacts, "examples.cover"))
 	if err != nil {
 		return err
 	}
-	profile, total, covered, err := MergeCoverage(native, examples)
+	profiles = append(profiles, examples)
+	profile, total, covered, err := MergeCoverage(profiles...)
 	if err != nil {
 		return err
 	}
@@ -163,7 +190,7 @@ func TestUnit(root string, record bool, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	report := Report{CoveredStatements: covered, Statements: total, PassedTests: passed, ExecutedPrograms: len(programs), GoVersion: strings.TrimSpace(string(version)), SourceFingerprint: fingerprint, Scope: "github.com/goforj/feature runtime package; tooling and executable scaffolding are not runtime library code"}
+	report := Report{CoveredStatements: covered, Statements: total, PassedTests: passed, ExecutedPrograms: len(programs), GoVersion: strings.TrimSpace(string(version)), SourceFingerprint: fingerprint, Scope: "all first-party runtime packages in the published root and driver modules; tooling, integration harness, and executable scaffolding are separate"}
 	serialized, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return err

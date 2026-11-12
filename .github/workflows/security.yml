@@ -22,4 +22,6 @@ jobs:
           cache: false
       - name: Scan the runtime library on the current patched toolchain
         run: |
-          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 .
+          for module in . driver/launchdarklyfeature driver/openfeaturefeature; do
+            (cd "$module" && GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 .)
+          done

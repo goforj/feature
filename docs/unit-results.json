@@ -1,9 +1,9 @@
 {
-  "covered_statements": 382,
+  "covered_statements": 553,
   "executed_programs": 5,
   "go_version": "go version go1.27.4 darwin/arm64",
-  "passed_tests": 137,
-  "scope": "github.com/goforj/feature runtime package; tooling and executable scaffolding are not runtime library code",
-  "source_fingerprint": "8bb0fb1d48a3a4e23e95eac1e8478b5c330210568cc26f47c4451546143924fb",
-  "statements": 382
+  "passed_tests": 146,
+  "scope": "all first-party runtime packages in the published root and driver modules; tooling, integration harness, and executable scaffolding are separate",
+  "source_fingerprint": "72b0586944a317145904ec50b48460967da053c0cd0f5d4abe082ace6c67e0e4",
+  "statements": 553
 }

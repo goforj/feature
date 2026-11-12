@@ -1,7 +1,7 @@
 .PHONY: test test-unit record-unit test-race test-coverage vet tidy modules-check generate check-generated test-tools
 
 test:
-	go test ./...
+	go run ./tools/maintain test-all
 
 test-unit:
 	go run ./tools/maintain test-unit
@@ -12,16 +12,16 @@ record-unit:
 test-coverage: test-unit
 
 test-race:
-	go test -race ./...
+	go run ./tools/maintain test-race
 
 vet:
-	go vet ./...
+	go run ./tools/maintain vet
 
 tidy:
-	go mod tidy
+	go run ./tools/maintain tidy
 
 modules-check:
-	@test "$$(find . -name go.mod -not -path './.git/*' | sort)" = './go.mod'
+	go run ./tools/maintain modules-check
 
 generate:
 	go run ./tools/maintain generate

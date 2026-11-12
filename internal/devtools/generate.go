@@ -78,6 +78,21 @@ func Fingerprint(root string) (string, error) {
 		}
 		paths = append(paths, tooling...)
 	}
+	err = filepath.WalkDir(filepath.Join(root, "driver"), func(path string, entry fs.DirEntry, err error) error {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && (strings.HasSuffix(path, ".go") || entry.Name() == "go.mod" || entry.Name() == "go.sum") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
 	paths = append(paths, filepath.Join(root, "go.mod"))
 	sort.Strings(paths)
 	hash := sha256.New()

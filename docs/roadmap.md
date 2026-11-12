@@ -2,7 +2,7 @@
 
 The standalone first implementation is built and pushed. The broader GoForj feature is still in progress. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
 
-The [provider study](provider-study.md) proposes a broader completion target: a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. Only the native engine is implemented today.
+The [provider study](provider-study.md) proposes a broader completion target: a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, and initial SDK adapters are implemented. Cross-driver service integration is in progress.
 
 ## Implemented
 
@@ -18,10 +18,10 @@ The [provider study](provider-study.md) proposes a broader completion target: a 
 
 - [x] Study OpenFeature, LaunchDarkly, GO Feature Flag, Unleash, and ConfigCat using official sources and pinned SDK probes. Retain [findings and reproducible evidence](provider-study.md).
 - [ ] Compare realistic consumer code for the candidate APIs, including setup, identity, simple checks, chosen fallbacks, details, test overrides, and shutdown.
-- [ ] Define a portable evaluation boundary that keeps vendor SDKs authoritative rather than converting their rules into native Documents.
-- [ ] Decide typed subject attributes, multi-identity mapping, snapshot capabilities, error/reason mapping, and readiness semantics before freezing their public representation.
-- [ ] Preserve existing native behavior or document concrete migration requirements for any API changes.
-- [ ] Implement direct LaunchDarkly and OpenFeature drivers in optional modules, with explicit borrowed versus owned SDK lifecycles.
+- [x] Define a portable evaluation boundary that keeps vendor SDKs authoritative rather than converting their rules into native Documents.
+- [x] Decide typed subject attributes, multi-identity mapping, snapshot capabilities, error/reason mapping, and readiness semantics before freezing their public representation.
+- [x] Preserve existing native behavior or document concrete migration requirements for any API changes.
+- [x] Implement direct LaunchDarkly and OpenFeature drivers in optional modules, with explicit borrowed versus owned SDK lifecycles.
 - [ ] Add a required shared driver conformance suite plus real SDK tests for updates, failures, context mapping, ownership, cancellation, and concurrent use.
 - [ ] Verify OpenFeature hooks/context precedence and native LaunchDarkly behavior; keep unsupported capabilities explicit.
 - [ ] Inventory every new module, minimum Go requirement, dependency pin, release tag, and public consumer check independently. Preserve the root's Go 1.24 minimum for native-only users.
