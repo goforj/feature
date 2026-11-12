@@ -51,11 +51,12 @@ type Result[T any] struct {
 // integers where possible; no integer is silently narrowed or converted to float.
 func CloneValue(value any) (any, error) {
 	budget := 0
-	return cloneValue(value, 0, &budget)
+	return cloneValue(value, 0, &budget, false)
 }
 
 // cloneValue accounts for allocation before recursively owning a JSON value.
-func cloneValue(value any, depth int, budget *int) (any, error) {
+// Unsigned mode is reserved for targeting comparisons rather than persisted flag values.
+func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, error) {
 	*budget += 16
 	if depth > 8 || *budget > MaxValueBytes {
 		return nil, ErrInvalidValue
@@ -78,7 +79,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 	case int32:
 		return int64(value), nil
 	case uint:
-		return cloneUnsigned(uint64(value))
+		return cloneUnsigned(uint64(value), allowUnsigned)
 	case uint8:
 		return int64(value), nil
 	case uint16:
@@ -86,7 +87,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 	case uint32:
 		return int64(value), nil
 	case uint64:
-		return cloneUnsigned(value)
+		return cloneUnsigned(value, allowUnsigned)
 	case float32:
 		return cloneFloat(float64(value))
 	case float64:
@@ -117,7 +118,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 			if !utf8.ValidString(key) {
 				return nil, ErrInvalidValue
 			}
-			next, err := cloneValue(item, depth+1, budget)
+			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
 			if err != nil {
 				return nil, err
 			}
@@ -134,7 +135,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 			if !utf8.ValidString(key) {
 				return nil, ErrInvalidValue
 			}
-			next, err := cloneValue(item, depth+1, budget)
+			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
 			if err != nil {
 				return nil, err
 			}
@@ -147,7 +148,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 		}
 		result := make([]any, len(value))
 		for i, item := range value {
-			next, err := cloneValue(item, depth+1, budget)
+			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +161,7 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 		}
 		result := make([]any, len(value))
 		for index, item := range value {
-			next, err := cloneValue(item, depth+1, budget)
+			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
 			if err != nil {
 				return nil, err
 			}
@@ -172,9 +173,12 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 	}
 }
 
-// cloneUnsigned refuses precision loss when normalizing unsigned integers.
-func cloneUnsigned(value uint64) (any, error) {
+// cloneUnsigned keeps targeting integers exact while flag values remain signed.
+func cloneUnsigned(value uint64, allowUnsigned bool) (any, error) {
 	if value > math.MaxInt64 {
+		if allowUnsigned {
+			return value, nil
+		}
 		return nil, ErrInvalidValue
 	}
 	return int64(value), nil

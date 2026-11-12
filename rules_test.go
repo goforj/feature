@@ -68,7 +68,8 @@ func TestTypedConditions(t *testing.T) {
 		{"missing-path", Condition{"/organization/plan", OpEqual, "pro", nil}, Target{Attributes: map[string]any{"organization": map[string]any{}}}, false},
 		{"key", Condition{"$key", OpEqual, "tenant:acme", nil}, Target{Key: "tenant:acme"}, true},
 		{"kind", Condition{"$kind", OpEqual, "organization", nil}, Target{Kind: "organization"}, true},
-		{"unsupported-numeric-range", Condition{"seats", OpGreater, 10, nil}, Target{Attributes: map[string]any{"seats": uint64(math.MaxUint64)}}, false},
+		{"unsigned-full-range", Condition{"seats", OpGreater, 10, nil}, Target{Attributes: map[string]any{"seats": uint64(math.MaxUint64)}}, true},
+		{"nonnumeric-time", Condition{"seats", OpGreater, 10, nil}, Target{Attributes: map[string]any{"seats": time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}}, false},
 		{"structured-equality", Condition{"organization", OpEqual, map[string]any{"plan": "pro"}, nil}, Target{Attributes: map[string]any{"organization": map[string]any{"plan": "pro"}}}, true},
 		{"structured-numeric-equality", Condition{"organization", OpEqual, map[string]any{"seats": []any{12}}, nil}, Target{Attributes: map[string]any{"organization": map[string]any{"seats": []any{12.0}}}}, true},
 		{"structured-length-mismatch", Condition{"organization", OpEqual, map[string]any{"plan": "pro"}, nil}, Target{Attributes: map[string]any{"organization": map[string]any{}}}, false},
@@ -167,6 +168,77 @@ func TestScheduledAndProgressiveRules(t *testing.T) {
 	now = opening.Add(time.Minute)
 	if err := engine.Refresh(ctx); err != nil || !flags.Enabled(ctx, "window") {
 		t.Fatal("source borrowed schedule pointers", err)
+	}
+}
+
+// TestProgressiveExactBoundary preserves eligibility at an exact basis-point transition.
+func TestProgressiveExactBoundary(t *testing.T) {
+	ctx := context.Background()
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	now := start
+	doc := Document{Schema: 2, Flags: map[string]Flag{
+		"flag": {Default: false, Rules: []Rule{{Value: true, Rollout: &Rollout{Salt: "salt", Progressive: &Progressive{Start: start, End: start.Add(time.Hour), From: 0, To: 10000}}}}},
+	}}
+	engine, err := Open(ctx, mustMemorySource(t, doc), WithClock(func() time.Time { return now }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	flags := New(engine).For(Target{Key: "probe-3197"})
+	for _, tc := range []struct {
+		elapsed time.Duration
+		want    bool
+	}{
+		{1080*time.Millisecond - time.Nanosecond, false},
+		{1080 * time.Millisecond, true},
+		{1080*time.Millisecond + time.Nanosecond, true},
+	} {
+		now = start.Add(tc.elapsed)
+		decision := flags.Evaluate(ctx, "flag", false)
+		if decision.Err != nil || decision.Value != tc.want {
+			t.Fatalf("at %s: got %+v, want %t", tc.elapsed, decision, tc.want)
+		}
+	}
+}
+
+// TestProgressiveBasisExactValues freezes integer interpolation and signed truncation.
+func TestProgressiveBasisExactValues(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	const maxDuration = time.Duration(1<<63 - 1)
+	for _, tc := range []struct {
+		name     string
+		duration time.Duration
+		elapsed  time.Duration
+		from     int
+		to       int
+		want     int
+	}{
+		{"before-start", time.Hour, -time.Nanosecond, 2000, 8000, 2000},
+		{"at-start", time.Hour, 0, 2000, 8000, 2000},
+		{"at-end", time.Hour, time.Hour, 2000, 8000, 8000},
+		{"after-end", time.Hour, time.Hour + time.Nanosecond, 2000, 8000, 8000},
+		{"increasing-before-boundary", time.Hour, 1080*time.Millisecond - time.Nanosecond, 0, 10000, 2},
+		{"increasing-at-boundary", time.Hour, 1080 * time.Millisecond, 0, 10000, 3},
+		{"increasing-after-boundary", time.Hour, 1080*time.Millisecond + time.Nanosecond, 0, 10000, 3},
+		{"decreasing-before-boundary", time.Hour, 1080*time.Millisecond - time.Nanosecond, 10000, 0, 9998},
+		{"decreasing-at-boundary", time.Hour, 1080 * time.Millisecond, 10000, 0, 9997},
+		{"decreasing-after-boundary", time.Hour, 1080*time.Millisecond + time.Nanosecond, 10000, 0, 9997},
+		{"unchanged", time.Hour, time.Minute, 4200, 4200, 4200},
+		{"long-increasing-midpoint", maxDuration, maxDuration / 2, 0, 10000, 4999},
+		{"long-decreasing-midpoint", maxDuration, maxDuration / 2, 10000, 0, 5001},
+		{"long-last-nanosecond", maxDuration, maxDuration - time.Nanosecond, 0, 10000, 9999},
+		{"nanosecond-increasing-first", 3 * time.Nanosecond, time.Nanosecond, 0, 10000, 3333},
+		{"nanosecond-increasing-last", 3 * time.Nanosecond, 2 * time.Nanosecond, 0, 10000, 6666},
+		{"nanosecond-decreasing-first", 3 * time.Nanosecond, time.Nanosecond, 10000, 0, 6667},
+		{"nanosecond-decreasing-last", 3 * time.Nanosecond, 2 * time.Nanosecond, 10000, 0, 3334},
+		{"nonzero-increasing", 3 * time.Nanosecond, time.Nanosecond, 2000, 8000, 4000},
+		{"nonzero-decreasing", 3 * time.Nanosecond, time.Nanosecond, 8000, 2000, 6000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			progress := Progressive{Start: start, End: start.Add(tc.duration), From: tc.from, To: tc.to}
+			if got := progressiveBasis(progress, start.Add(tc.elapsed)); got != tc.want {
+				t.Fatalf("got %d, want %d", got, tc.want)
+			}
+		})
 	}
 }
 

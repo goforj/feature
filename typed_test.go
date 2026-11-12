@@ -170,7 +170,10 @@ func TestValueBounds(t *testing.T) {
 	}
 	cycle := map[string]any{}
 	cycle["self"] = cycle
-	bad := []any{func() {}, uint64(math.MaxUint64), uint(math.MaxUint64), math.NaN(), math.Inf(1), float32(math.Inf(1)), json.Number("bad"), strings.Repeat("x", MaxValueBytes), string([]byte{255}), map[string]any{string([]byte{255}): true}, []any{func() {}}, cycle, make([]any, MaxSubjects+1)}
+	bad := []any{func() {}, uint64(math.MaxUint64), math.NaN(), math.Inf(1), float32(math.Inf(1)), json.Number("bad"), strings.Repeat("x", MaxValueBytes), string([]byte{255}), map[string]any{string([]byte{255}): true}, []any{func() {}}, cycle, make([]any, MaxSubjects+1)}
+	if uint64(^uint(0)) > math.MaxInt64 {
+		bad = append(bad, ^uint(0))
+	}
 	many := map[string]any{}
 	for i := 0; i <= MaxSubjects; i++ {
 		many[fmt.Sprint(i)] = true

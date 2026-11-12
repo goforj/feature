@@ -121,6 +121,20 @@ Public signatures, module layout, dependencies, Go minimums, and valid document 
 
 The final local gate passed 312 unit cases, all 12 programs, and 1823/1823 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Decoder fuzzing completed 5,753,089 executions without failure. Independent event/recovery checks passed 100 race-enabled repetitions, and the original external SDK probes passed after the fixes.
 
+## Further numeric boundary review
+
+Four further independent reviews examined model arithmetic, facade/adapter contracts, state and lifecycle behavior, and resource boundaries. The state/lifecycle pass found no additional supported-contract issue and repeated event/recovery race tests successfully. Numeric and contract fixes received independent re-review after implementation.
+
+A one-hour progressive rollout from zero to 10000 basis points computed two basis points rather than three at exactly 1080 milliseconds. An identity in bucket two switched one nanosecond late. Interpolation now uses overflow-safe integer multiplication and division, preserving endpoint clamps and signed truncation. Regressions cover the public evaluation path, increasing and decreasing thresholds, unchanged percentages, nanosecond intervals, and the maximum supported duration. The original reproduction now passes with its revision unchanged.
+
+Large unsigned attributes passed Target validation but silently made native numeric conditions ineligible because flag-value normalization rejected them. Condition input normalization now retains full-range uint64 targeting values, including nested arrays and objects, and exact comparison supports both operand orders. Public flag values and configured comparison literals retain their existing signed range. The original MaxInt64-plus-one and MaxUint64 probes now match their numeric rules without changing source encoding or revision hashing.
+
+A pre-existing uint constant in the value-bound tests prevented 32-bit test compilation. The test now selects the platform's maximum unsigned value without an overflowing constant conversion. Linux/386 library and test-binary cross-compilation passed; no 32-bit runtime execution is claimed.
+
+Public signatures, persisted document formats, stable rollout buckets, dependencies, and Go minimums are unchanged. Runtime corrections affect unsigned-target eligibility and exact progressive transition instants. No additional security or ownership defect was confirmed.
+
+The final local gate passed 351 unit cases, all 12 programs, and 1834/1834 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Independent progressive, schema 1, and split checks passed 20 repetitions, and both original numeric probes passed after the fixes.
+
 ## Distribution inventory
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

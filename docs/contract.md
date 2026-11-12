@@ -131,7 +131,7 @@ Schema 1 remains strict and boolean-only. Schema 2 uses the same flags inventory
 
 Encode preserves floating-point syntax throughout nested values, variants, and conditions. Integer tokens outside int64 are rejected rather than rounded into floats; integer tokens supplied as declared floats must be exactly representable. Decimal and exponent tokens use finite float64 semantics. The same representation distinguishes schema 2 revisions and changed-flag notifications. Corrected revisions for float-containing schema 2 documents can trigger one refresh notification after upgrading. Schema 1 canonical bytes, revisions, and rollout assignments remain unchanged.
 
-Defaults, rule results, and optional off values must have the same type. Disabled booleans default to false; disabled non-boolean flags require an explicit off value. Objects and arrays may contain null, booleans, strings, finite numbers, nested objects, and arrays. Standalone null flag values are rejected. Each owned value is bounded to 64 KiB and eight nested container levels, and container lengths are bounded to 1024. The complete compiled document remains bounded to 1 MiB.
+Defaults, rule results, and optional off values must have the same type. Disabled booleans default to false; disabled non-boolean flags require an explicit off value. Objects and arrays may contain null, booleans, strings, finite numbers, nested objects, and arrays. Standalone null flag values are rejected. Each owned value is bounded to 64 KiB and eight nested container levels, and container lengths are bounded to 1024. The complete normalized document encoding remains bounded to 1 MiB.
 
 Features and Scope expose String, Int, Float, and Object with explicit fallbacks and Result values. Wrong-type requests return ErrTypeMismatch. Drivers without the optional TypedEvaluator contract return ErrUnsupported. Validated fallback and successful object containers are copied. Native View has matching typed reads against one immutable revision. Native counters include typed reads through Client.
 
@@ -151,7 +151,11 @@ Schema 2 adds variants, default_variant, off_variant, and rule variant or split 
 
 Conditions are ANDed within each rule. Operators are eq, ne, in, not_in, gt, ge, lt, le, contains, prefix, suffix, matches, exists, and missing. Comparisons require presence except missing; an explicit null is present. Numbers compare without narrowing int64 values, including inside JSON object and array equality. No string-to-number conversion occurs. Literal attribute names are supported, while a leading slash selects JSON Pointer traversal with ~0 and ~1 escaping. $key and $kind select explicit identity fields. Patterns are bounded RE2 expressions compiled before publication.
 
+Unsigned targeting integers retain their full uint64 range during numeric comparisons, including nested arrays and objects. This does not expand the signed int64 range of configured flag values or comparison literals.
+
 Rule start is inclusive and end is exclusive. A progressive rollout declares absolute start and end instants and integer from/to percentages in basis points. Percentages clamp before and after the interval and interpolate within it; increasing and decreasing rollouts are supported. A percentage still requires an identity at 100 percent. Calendar behavior is evaluated without a scheduling worker. Native View captures evaluation time together with its immutable definitions, and it implements TypedEvaluator for ordinary scoped use through New(view).
+
+Progressive interpolation computes the signed percentage change with exact integer arithmetic and truncates that change toward zero. Exact basis-point thresholds do not depend on floating-point rounding, including for long intervals.
 
 ## Observations, custom events, and delivery
 

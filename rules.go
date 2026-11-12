@@ -2,6 +2,7 @@ package feature
 
 import (
 	"math/big"
+	"math/bits"
 	"regexp"
 	"strconv"
 	"strings"
@@ -187,6 +188,8 @@ func numericComparison(left, right any) (int, bool) {
 	switch value := left.(type) {
 	case int64:
 		a.SetInt64(value)
+	case uint64:
+		a.SetUint64(value)
 	case float64:
 		a.SetFloat64(value)
 	default:
@@ -195,6 +198,8 @@ func numericComparison(left, right any) (int, bool) {
 	switch value := right.(type) {
 	case int64:
 		b.SetInt64(value)
+	case uint64:
+		b.SetUint64(value)
 	case float64:
 		b.SetFloat64(value)
 	default:
@@ -249,7 +254,8 @@ func conditionMatches(condition Condition, subject Subject) bool {
 	if !present {
 		return false
 	}
-	actual, err := CloneValue(actual)
+	budget := 0
+	actual, err := cloneValue(actual, 0, &budget, true)
 	if err != nil {
 		return false
 	}
@@ -314,8 +320,18 @@ func progressiveBasis(progress Progressive, at time.Time) int {
 	if !at.Before(progress.End) {
 		return progress.To
 	}
-	fraction := float64(at.Sub(progress.Start)) / float64(progress.End.Sub(progress.Start))
-	return progress.From + int(float64(progress.To-progress.From)*fraction)
+	delta := progress.To - progress.From
+	if delta < 0 {
+		delta = -delta
+	}
+	// The product can exceed 64 bits for long intervals, and exact division keeps
+	// basis-point transitions independent of floating-point rounding.
+	high, low := bits.Mul64(uint64(at.Sub(progress.Start)), uint64(delta))
+	change, _ := bits.Div64(high, low, uint64(progress.End.Sub(progress.Start)))
+	if progress.To < progress.From {
+		return progress.From - int(change)
+	}
+	return progress.From + int(change)
 }
 
 // splitVariant preserves explicit allocation order and the stable native bucket encoding.
