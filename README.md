@@ -28,12 +28,12 @@
 
 ## Quick start
 
-Requires Go 1.24 or newer. This library has no external runtime dependencies and is unreleased. Clone and run the canonical example:
+The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the canonical example:
 
 ```sh
 git clone https://github.com/goforj/feature.git
 cd feature
-go run ./examples/quickstart
+go -C examples run ./quickstart
 ```
 
 The example constructs an injected client, then enables checkout for a selected tenant:
@@ -90,14 +90,16 @@ Every runtime module requires exact 100% unit statement coverage. The separate [
 Run from the repository root:
 
 ```sh
-go run ./examples/quickstart # Identity targeting and explicit fallback.
-go run ./examples/portable   # Provider-neutral checks and typed request targeting.
-go run ./examples/targeting  # Attribute matching and a stable percentage rollout.
-go run ./examples/refresh   # File replacement and consistent request snapshots.
-go run ./examples/polling   # Live updates with an owned, cancellable refresh loop.
+go -C examples run ./quickstart   # Identity targeting and explicit fallback.
+go -C examples run ./portable     # Portable checks and typed request targeting.
+go -C examples run ./targeting    # Attributes and stable percentage rollout.
+go -C examples run ./refresh      # File replacement and request snapshots.
+go -C examples run ./polling      # Owned, cancellable refresh loop.
+go -C examples run ./launchdarkly # Borrowed and owned SDK adapters, offline data.
+go -C examples run ./openfeature  # Borrowed and owned SDKs, memory provider.
 ```
 
-Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go).
+Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go), [LaunchDarkly](examples/launchdarkly/main.go), [OpenFeature](examples/openfeature/main.go).
 
 The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 
@@ -114,6 +116,8 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 | Group | Functions |
 | ---: | :--- |
 | **Portable evaluation** | [New](#api-new) · [Features.For](#api-features.for) · [Features.Enabled](#api-features.enabled) · [Scope.Evaluate](#api-scope.evaluate) |
+| **LaunchDarkly** | [launchdarklyfeature.New](#api-launchdarklyfeature.new) · [launchdarklyfeature.Open](#api-launchdarklyfeature.open) |
+| **OpenFeature** | [openfeaturefeature.Open](#api-openfeaturefeature.open) · [openfeaturefeature.New](#api-openfeaturefeature.new) |
 | **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
 | **Evaluation** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
 | **Consistency** | [Snapshot](#api-snapshot) |
@@ -155,6 +159,76 @@ fmt.Println("Untargeted checkout:", features.Enabled(ctx, "checkout-v2"))
 decision := checkout.Evaluate(ctx, "unknown-feature", true)
 fmt.Println("Explicit fallback:", decision.Value, decision.Reason)
 // Explicit fallback: true missing
+```
+
+## LaunchDarkly
+
+<a id="api-launchdarklyfeature.new"></a>
+
+### launchdarklyfeature.New
+
+New borrows an initialized native client without changing its configuration or lifecycle.
+
+```go
+borrowed := launchdarklyfeature.New(sdk)
+defer borrowed.Close()
+flags := feature.New(borrowed).For(feature.Target{Key: "tenant:acme"})
+fmt.Println("Borrowed checkout:", flags.Enabled(ctx, "checkout-v2"))
+// Borrowed checkout: true
+```
+
+<a id="api-launchdarklyfeature.open"></a>
+
+### launchdarklyfeature.Open
+
+Open starts the real SDK and waits for initialization without global registration. Cancellation closes a partially initialized client; successful drivers own shutdown.
+
+```go
+owned, err := launchdarklyfeature.Open(ctx, launchdarklyfeature.Config{
+	SDKKey: "offline-example", SDKConfig: config,
+})
+if err != nil {
+	panic(err)
+}
+defer owned.Close()
+checkout := feature.New(owned).For(feature.Target{Key: "tenant:acme"})
+fmt.Println("Owned checkout:", checkout.Enabled(ctx, "checkout-v2"))
+// Owned checkout: true
+```
+
+## OpenFeature
+
+<a id="api-openfeaturefeature.open"></a>
+
+### openfeaturefeature.Open
+
+Open owns an isolated API, waits for provider initialization, and starts no global binding. The SDK's isolated API is experimental and contained behind this optional module.
+
+```go
+owned, err := openfeaturefeature.Open(ctx, provider)
+if err != nil {
+	panic(err)
+}
+defer owned.Close()
+checkout := feature.New(owned).For(feature.Target{
+	Key: "tenant:acme", Attributes: map[string]any{"plan": "pro", "seats": 12},
+})
+fmt.Println("Owned checkout:", checkout.Enabled(ctx, "checkout-v2"))
+// Owned checkout: true
+```
+
+<a id="api-openfeaturefeature.new"></a>
+
+### openfeaturefeature.New
+
+New borrows an initialized SDK client without changing provider bindings or lifecycle.
+
+```go
+borrowed := openfeaturefeature.New(sdk)
+defer borrowed.Close()
+flags := feature.New(borrowed)
+fmt.Println("Borrowed checkout:", flags.Enabled(ctx, "checkout-v2"))
+// Borrowed checkout: true
 ```
 
 ## Construction

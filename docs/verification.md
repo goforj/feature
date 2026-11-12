@@ -1,0 +1,36 @@
+# Verification record
+
+The standalone library includes native memory/file evaluation, a portable boolean facade, and optional direct LaunchDarkly and OpenFeature SDK adapters. Framework wiring, typed flag values, hosted account verification, and release publication remain separate work.
+
+## Executed checks
+
+The runtime unit gate covers exactly **553 of 553 statements** across the root and both driver modules. It runs all seven canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the source fingerprint, toolchain, actual case count, and statement counts.
+
+The [integration evidence](integration-results.json) records **70 passing cases with race detection**. A real, digest-pinned GO Feature Flag relay runs remote and in-process OpenFeature evaluations. Tests verify its running version, a nine-case contract across five configurations, real container pause/resume, rejected credentials and initialization, typed attributes, malformed HTTP success, in-flight cancellation, updates, and shutdown. File tests preserve coherent request snapshots during concurrent refresh and recover after malformed documents and deletion.
+
+LaunchDarkly's real SDK processes local streaming payloads and sends analytics to a local collector. Tests verify rejected and malformed startup responses, cancellation, updates, configured off-variations, delivery on owned close, and continued caller-owned SDK use after closing a borrowed adapter. These checks do not establish hosted LaunchDarkly account verification.
+
+`make test-race vet tidy modules-check test-tools generate check-generated` passed. Tidy checks all five modules; vet includes integration-tagged code. Documentation generation checks two-pass byte parity. `govulncheck` v1.9.0 on Go 1.27.4 found no vulnerabilities in any of the three runtime packages. The scan does not certify every test dependency or container image.
+
+## Clean Git consumers
+
+Independent consumers installed source commit `136744426350e7fc5d05114d904237ff1afd9a5e` using actual Go pseudo-versions outside the checkout, with `GOWORK=off` and no replacements. Subsequent example and integration additions leave runtime APIs unchanged. Each consumer performed a successful boolean evaluation with race detection:
+
+| Consumer | Executed toolchain | Selected native root |
+| :--- | :--- | :--- |
+| Native only | Go 1.24.13 | Candidate commit |
+| LaunchDarkly only | Go 1.25.5 | Adapter's declared `331a16e2f707` requirement |
+| OpenFeature only | Go 1.26.0 | Adapter's declared `331a16e2f707` requirement |
+| Native and both drivers | Go 1.27.4 | Candidate commit |
+
+The adapter-only checks did not force-upgrade the root, so they also validate each adapter's declared minimum root requirement. Selected module metadata contained no replacements. Public dependencies used normal checksum verification. The first-party repository is private: installation used Git authentication and `GOPRIVATE=github.com/goforj/feature`. This does not establish public-proxy availability or a versioned release.
+
+## Review findings
+
+- Compatibility: native Subject retains string attributes. Source, snapshot, schema 1, stable rollout encoding, and revision behavior remain intact. Typed SDK targeting uses the additive Target type. Vendor dependencies and higher Go minimums stay in optional modules. The combined example catalog uses Go 1.26 without raising the native minimum.
+- Provider semantics: Source.Load remains a complete native-document boundary. Adapters evaluate through actual SDKs, preserving rules, hooks, context merging, and configured off-variations. A targeting scope does not claim a frozen vendor revision. Provider rollout assignments and freshness are not portable guarantees.
+- Ownership and resources: scopes clone bounded target data. SDK constructors explicitly borrow or own. Startup failures clean up owned resources. Integration fixtures own services once per package run, clean partial starts, and fail rather than skip missing Docker.
+- Failure safety: structured errors preserve explicit fallbacks and safe classifications rather than upstream diagnostics. Refresh retains valid native snapshots. Outages and malformed responses are tested separately from missing flags.
+- Documentation: SDK constructors have executable examples and generated API-index destinations. Generator tests reject unrelated constructors sharing the same name. Unit and integration reports remain separate and tied to tested source.
+
+Hosted LaunchDarkly verification, real GoForj App adoption, framework integration, external Codecov setup, public distribution, and releases remain pending in the [roadmap](roadmap.md).

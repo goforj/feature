@@ -2,7 +2,7 @@
 
 The standalone first implementation is built and pushed. The broader GoForj feature is still in progress. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
 
-The [provider study](provider-study.md) proposes a broader completion target: a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, and initial SDK adapters are implemented. Cross-driver service integration is in progress.
+The [provider study](provider-study.md) informed a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, SDK adapters, and cross-driver local integration suite are implemented. Hosted LaunchDarkly account verification remains pending and is distinct from the tested local SDK transports.
 
 ## Implemented
 
@@ -17,22 +17,22 @@ The [provider study](provider-study.md) proposes a broader completion target: a 
 ## Portable driver design and implementation before v1
 
 - [x] Study OpenFeature, LaunchDarkly, GO Feature Flag, Unleash, and ConfigCat using official sources and pinned SDK probes. Retain [findings and reproducible evidence](provider-study.md).
-- [ ] Compare realistic consumer code for the candidate APIs, including setup, identity, simple checks, chosen fallbacks, details, test overrides, and shutdown.
+- [x] Compare realistic consumer code for setup, identity, simple checks, fallbacks, details, test data, and shutdown. Canonical native and SDK examples execute under one output-checking runner.
 - [x] Define a portable evaluation boundary that keeps vendor SDKs authoritative rather than converting their rules into native Documents.
 - [x] Decide typed subject attributes, multi-identity mapping, snapshot capabilities, error/reason mapping, and readiness semantics before freezing their public representation.
 - [x] Preserve existing native behavior or document concrete migration requirements for any API changes.
 - [x] Implement direct LaunchDarkly and OpenFeature drivers in optional modules, with explicit borrowed versus owned SDK lifecycles.
-- [ ] Add a required shared driver conformance suite plus real SDK tests for updates, failures, context mapping, ownership, cancellation, and concurrent use.
-- [ ] Verify OpenFeature hooks/context precedence and native LaunchDarkly behavior; keep unsupported capabilities explicit.
+- [x] Add a required shared driver conformance suite plus real SDK tests for updates, failures, context mapping, ownership, cancellation, and concurrent use. The [integration report](integration-results.json) records executed local service and SDK transport evidence.
+- [x] Verify OpenFeature hooks/context precedence and native LaunchDarkly behavior; keep unsupported capabilities explicit.
 - [ ] Inventory every new module, minimum Go requirement, dependency pin, release tag, and public consumer check independently. Preserve the root's Go 1.24 minimum for native-only users.
 
 ## Library review before freezing v1
 
-- [ ] Review the consumer API separately from its implementation: construction, source ownership, fallbacks, cancellation, and request/job snapshot use.
-- [ ] Review correctness and resources: concurrent publication, failed refreshes, stale state, JSON validation, aggregate limits, and error redaction.
-- [ ] Review the native engine and external drivers against the provider-neutral product boundary, including whether the facade improves on using an SDK directly.
-- [ ] Review schema 1, rollout encoding, and revision normalization as compatibility contracts before publishing them.
-- [ ] Reproduce and fix concrete findings, add regression coverage, and rerun affected checks.
+- [x] Review the consumer API separately from its implementation: construction, source ownership, fallbacks, cancellation, and request/job snapshot use.
+- [x] Review correctness and resources: concurrent publication, failed refreshes, stale state, JSON validation, aggregate limits, and error redaction.
+- [x] Review the native engine and external drivers against the provider-neutral product boundary, including whether the facade improves on using an SDK directly.
+- [x] Review schema 1, rollout encoding, and revision normalization as compatibility contracts before publishing them.
+- [x] Reproduce and fix concrete findings, add regression coverage, and rerun affected checks. The [verification record](verification.md) records findings, executed checks, consumer evidence, and limits.
 
 Completion means the review findings and their resolution are recorded. Existing coverage and green CI do not stand in for this review.
 
@@ -63,7 +63,7 @@ This work belongs in `goforj`, with public guidance in `goforj-docs`.
 
 - [ ] Resolve review and real-App findings, then freeze the initial public API and document contract.
 - [ ] Confirm the intended distribution and access model. The repository is currently private; do not assume public-proxy availability.
-- [ ] Verify an external consumer can install the exact candidate with `GOWORK=off`, normal checksums, and no local replacements under the intended access model.
+- [x] Verify independent native and SDK consumers plus their combined composition with `GOWORK=off`, normal public dependency checksums, and no local replacements under the current private Git access model. Repeat for the eventual release and public distribution model if selected.
 - [ ] Decide whether to enable Codecov, then configure and verify its uploads and checks if selected. Local exact coverage enforcement already exists.
 - [ ] Prepare release notes, select an initial version, and verify CI/Security for the final candidate.
 - [ ] Publish the authorized version and verify installation of the actual published module. Update the unreleased badge and installation guidance afterward.

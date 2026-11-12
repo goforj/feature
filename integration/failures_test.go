@@ -17,6 +17,7 @@ import (
 	"github.com/goforj/feature"
 	"github.com/goforj/feature/driver/openfeaturefeature"
 	"github.com/open-feature/go-sdk-contrib/providers/go-feature-flag/pkg"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 // openRelay owns a real SDK provider while allowing native authentication and transport policy.
@@ -50,6 +51,63 @@ func TestRelayAuthentication(t *testing.T) {
 	if !decision.Value || decision.Err != feature.ErrUnavailable {
 		t.Fatal(decision)
 	}
+	provider, err := gofeatureflag.NewProvider(gofeatureflag.ProviderOptions{Endpoint: service.endpoint, APIKey: "incorrect-public-test-key", EvaluationType: gofeatureflag.EvaluationTypeInProcess, DataCollectorDisabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if driver, err := openfeaturefeature.Open(ctx, provider); err != feature.ErrUnavailable || driver != nil {
+		t.Fatalf("unauthorized initialization: driver=%v error=%v", driver, err)
+	}
+}
+
+// TestRelayContainerOutage freezes the actual service and verifies each SDK's documented outage policy.
+func TestRelayContainerOutage(t *testing.T) {
+	service := relay(t)
+	key := namespace() + "paused"
+	service.update(t, map[string]any{key: remoteFlag(true, "")})
+	remote := openRelay(t, service.endpoint, evaluationKey, gofeatureflag.EvaluationTypeRemote)
+	remoteFlags := feature.New(remote).For(feature.Target{Key: "tenant:acme"})
+	eventually(t, func() bool { return remoteFlags.Enabled(context.Background(), key) })
+	inprocess := openRelay(t, service.endpoint, evaluationKey, gofeatureflag.EvaluationTypeInProcess)
+	localFlags := feature.New(inprocess).For(feature.Target{Key: "tenant:acme"})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	docker, err := testcontainers.NewDockerClientWithOpts(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = docker.Close() })
+	if err := docker.ContainerPause(ctx, service.container.GetContainerID()); err != nil {
+		t.Fatal(err)
+	}
+	paused := true
+	t.Cleanup(func() {
+		if paused {
+			cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := docker.ContainerUnpause(cleanup, service.container.GetContainerID()); err != nil {
+				t.Error(err)
+			}
+		}
+	})
+	if d := remoteFlags.Evaluate(context.Background(), key, false); d.Value || d.Err != feature.ErrUnavailable {
+		t.Fatal("remote SDK did not apply the outage fallback", d)
+	}
+	if d := localFlags.Evaluate(context.Background(), key, false); !d.Value || d.Err != nil {
+		t.Fatal("in-process SDK lost its last valid configuration", d)
+	}
+	if err := docker.ContainerUnpause(ctx, service.container.GetContainerID()); err != nil {
+		t.Fatal(err)
+	}
+	paused = false
+	service.update(t, map[string]any{key: remoteFlag(false, "")})
+	eventually(t, func() bool {
+		a := remoteFlags.Evaluate(context.Background(), key, true)
+		b := localFlags.Evaluate(context.Background(), key, true)
+		return !a.Value && a.Err == nil && !b.Value && b.Err == nil
+	})
 }
 
 // TestRelayTransportFailures keeps the real service behind a controllable network boundary.

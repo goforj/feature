@@ -9,7 +9,6 @@ require (
 	github.com/launchdarkly/go-sdk-common/v3 v3.6.0
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.2.0
 	github.com/launchdarkly/go-server-sdk/v7 v7.22.0
-	github.com/launchdarkly/go-test-helpers/v3 v3.1.0
 	github.com/open-feature/go-sdk v1.20.0
 	github.com/open-feature/go-sdk-contrib/providers/go-feature-flag v1.1.3
 	github.com/open-feature/go-sdk-contrib/providers/launchdarkly v0.2.0
@@ -50,6 +49,7 @@ require (
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.2 // indirect
 	github.com/launchdarkly/go-sdk-events/v3 v3.8.1 // indirect
 	github.com/launchdarkly/go-semver v1.0.3 // indirect
+	github.com/launchdarkly/go-test-helpers/v3 v3.1.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

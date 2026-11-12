@@ -28,12 +28,12 @@
 
 ## Quick start
 
-Requires Go 1.24 or newer. This library has no external runtime dependencies and is unreleased. Clone and run the canonical example:
+The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the canonical example:
 
 ```sh
 git clone https://github.com/goforj/feature.git
 cd feature
-go run ./examples/quickstart
+go -C examples run ./quickstart
 ```
 
 The example constructs an injected client, then enables checkout for a selected tenant:
@@ -69,14 +69,16 @@ Every runtime module requires exact 100% unit statement coverage. The separate [
 Run from the repository root:
 
 ```sh
-go run ./examples/quickstart # Identity targeting and explicit fallback.
-go run ./examples/portable   # Provider-neutral checks and typed request targeting.
-go run ./examples/targeting  # Attribute matching and a stable percentage rollout.
-go run ./examples/refresh   # File replacement and consistent request snapshots.
-go run ./examples/polling   # Live updates with an owned, cancellable refresh loop.
+go -C examples run ./quickstart   # Identity targeting and explicit fallback.
+go -C examples run ./portable     # Portable checks and typed request targeting.
+go -C examples run ./targeting    # Attributes and stable percentage rollout.
+go -C examples run ./refresh      # File replacement and request snapshots.
+go -C examples run ./polling      # Owned, cancellable refresh loop.
+go -C examples run ./launchdarkly # Borrowed and owned SDK adapters, offline data.
+go -C examples run ./openfeature  # Borrowed and owned SDKs, memory provider.
 ```
 
-Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go).
+Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go), [LaunchDarkly](examples/launchdarkly/main.go), [OpenFeature](examples/openfeature/main.go).
 
 The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 

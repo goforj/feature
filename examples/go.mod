@@ -1,0 +1,34 @@
+module github.com/goforj/feature/examples
+
+go 1.26.0
+
+require (
+	github.com/goforj/feature v0.0.0-20261112043718-ba082c38abae
+	github.com/goforj/feature/driver/launchdarklyfeature v0.0.0-20261112043718-ba082c38abae
+	github.com/goforj/feature/driver/openfeaturefeature v0.0.0-20261112043718-ba082c38abae
+	github.com/launchdarkly/go-server-sdk/v7 v7.22.0
+	github.com/open-feature/go-sdk v1.20.0
+)
+
+require (
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/gregjones/httpcache v0.0.0-20171119193500-2bcd89a1743f // indirect
+	github.com/josharian/intern v1.0.0 // indirect
+	github.com/launchdarkly/ccache v1.1.0 // indirect
+	github.com/launchdarkly/eventsource v1.14.2 // indirect
+	github.com/launchdarkly/go-jsonstream/v3 v3.1.2 // indirect
+	github.com/launchdarkly/go-sdk-common/v3 v3.6.0 // indirect
+	github.com/launchdarkly/go-sdk-events/v3 v3.8.1 // indirect
+	github.com/launchdarkly/go-semver v1.0.3 // indirect
+	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.2.0 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	go.uber.org/mock v0.6.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+)
+
+replace github.com/goforj/feature => ..
+
+replace github.com/goforj/feature/driver/launchdarklyfeature => ../driver/launchdarklyfeature
+
+replace github.com/goforj/feature/driver/openfeaturefeature => ../driver/openfeaturefeature

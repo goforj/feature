@@ -28,6 +28,10 @@ func Entries() []Entry {
 		{"Portable evaluation", "Features.For", "portable", "portable"},
 		{"Portable evaluation", "Features.Enabled", "portable", "portable"},
 		{"Portable evaluation", "Scope.Evaluate", "portable", "portable"},
+		{"LaunchDarkly", "launchdarklyfeature.New", "launchdarkly-borrowed", "launchdarkly"},
+		{"LaunchDarkly", "launchdarklyfeature.Open", "launchdarkly-owned", "launchdarkly"},
+		{"OpenFeature", "openfeaturefeature.Open", "openfeature-owned", "openfeature"},
+		{"OpenFeature", "openfeaturefeature.New", "openfeature-borrowed", "openfeature"},
 		{"Construction", "NewMemorySource", "construction", "quickstart"},
 		{"Construction", "Open", "construction", "quickstart"},
 		{"Evaluation", "Enabled", "enabled", "quickstart"},
@@ -63,7 +67,7 @@ func Fingerprint(root string) (string, error) {
 		if err != nil {
 			return err
 		}
-		if !entry.IsDir() && strings.HasSuffix(path, ".go") {
+		if !entry.IsDir() && (strings.HasSuffix(path, ".go") || entry.Name() == "go.mod" || entry.Name() == "go.sum") {
 			paths = append(paths, path)
 		}
 		return nil
@@ -148,6 +152,10 @@ func GoDoc(root, name string) (string, error) {
 		symbol = name
 	}
 	paths, err := filepath.Glob(filepath.Join(root, "*.go"))
+	if qualified && (receiver == "launchdarklyfeature" || receiver == "openfeaturefeature") {
+		paths, err = filepath.Glob(filepath.Join(root, "driver", receiver, "*.go"))
+		qualified = false
+	}
 	if err != nil {
 		return "", err
 	}
@@ -313,7 +321,9 @@ func Generate(root string) error {
 
 // demonstrates checks actual call expressions rather than matching comment or string text.
 func demonstrates(code, name string) bool {
-	if _, symbol, qualified := strings.Cut(name, "."); qualified {
+	qualifier, symbol, qualified := strings.Cut(name, ".")
+	packageCall := qualified && (qualifier == "launchdarklyfeature" || qualifier == "openfeaturefeature")
+	if qualified {
 		name = symbol
 	}
 	file, err := parser.ParseFile(token.NewFileSet(), "snippet.go", "package snippet\nfunc example(){\n"+code+"\n}", 0)
@@ -328,9 +338,13 @@ func demonstrates(code, name string) bool {
 		}
 		switch function := call.Fun.(type) {
 		case *ast.Ident:
-			found = found || function.Name == name
+			found = found || !packageCall && function.Name == name
 		case *ast.SelectorExpr:
-			found = found || function.Sel.Name == name
+			if !packageCall {
+				found = found || function.Sel.Name == name
+			} else if receiver, ok := function.X.(*ast.Ident); ok {
+				found = found || receiver.Name == qualifier && function.Sel.Name == name
+			}
 		}
 		return true
 	})

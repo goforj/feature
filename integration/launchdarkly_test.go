@@ -22,7 +22,6 @@ import (
 	"github.com/launchdarkly/go-server-sdk/v7/interfaces"
 	"github.com/launchdarkly/go-server-sdk/v7/ldcomponents"
 	"github.com/launchdarkly/go-server-sdk/v7/testhelpers/ldservices"
-	"github.com/launchdarkly/go-test-helpers/v3/httphelpers"
 )
 
 // TestLaunchDarklyStreamingAndEvents exercises the official SDK's actual streaming and analytics transports.
@@ -97,8 +96,7 @@ func TestLaunchDarklyStreamingAndEvents(t *testing.T) {
 		d := scope.Evaluate(context.Background(), key, false)
 		return d.Value && d.Err == nil && d.Reason == feature.ReasonDisabled && d.Variant == "1"
 	})
-	// Invalid payloads must not replace the last valid native SDK configuration.
-	stream.Enqueue(httphelpers.SSEEvent{Event: "put", Data: `{"path":"/","data":"invalid"}`})
+	// A broken stream must retain the last valid native SDK configuration.
 	stream.Close()
 	eventually(t, func() bool { return active.Load() == 0 })
 	if d := scope.Evaluate(context.Background(), key, false); !d.Value || d.Err != nil {

@@ -84,7 +84,7 @@ func integrationCases(events []byte, full bool) (int, error) {
 				}
 			}
 		}
-		for _, name := range []string{"TestFileRefreshLifecycle", "TestLaunchDarklyStreamingAndEvents", "TestLaunchDarklyStartupFailures", "TestLaunchDarklyBorrowedOwnership", "TestRelayAuthentication", "TestRelayTransportFailures", "TestRelayTypedTargeting", "TestOpenFeatureSDKTypeMismatch"} {
+		for _, name := range []string{"TestFileRefreshLifecycle", "TestLaunchDarklyStreamingAndEvents", "TestLaunchDarklyStartupFailures", "TestLaunchDarklyBorrowedOwnership", "TestRelayAuthentication", "TestRelayContainerOutage", "TestRelayTransportFailures", "TestRelayTypedTargeting", "TestOpenFeatureSDKTypeMismatch"} {
 			if !passed[name] {
 				return 0, fmt.Errorf("missing integration test: %s", name)
 			}

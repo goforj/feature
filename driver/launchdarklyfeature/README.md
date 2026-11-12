@@ -12,6 +12,8 @@ Run from the repository checkout:
 
 ```sh
 go -C driver/launchdarklyfeature test -race ./...
+go -C examples run ./launchdarkly
+INTEGRATION_RUN='TestDriverConformance/launchdarkly|TestLaunchDarkly' make test-integration
 ```
 
 Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Local SDK and protocol verification are separate from hosted-account verification. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.

@@ -21,6 +21,11 @@ func fixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	paths = append(paths, examples...)
+	drivers, err := filepath.Glob("../../driver/*/driver.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths = append(paths, drivers...)
 	assets, err := filepath.Glob("../../docs/assets/*.svg")
 	if err != nil {
 		t.Fatal(err)
@@ -188,6 +193,14 @@ func TestDemonstratesUsesAST(t *testing.T) {
 	}
 	if !demonstrates(`features.Enabled(ctx,"key",false,subject)`, "Enabled") || !demonstrates(`Open(ctx,source)`, "Open") {
 		t.Fatal("valid call rejected")
+	}
+	for _, code := range []string{`feature.New(engine)`, `New(sdk)`, `other.New(sdk)`, `factory().New(sdk)`} {
+		if demonstrates(code, "launchdarklyfeature.New") {
+			t.Fatal("unrelated constructor matched a driver API", code)
+		}
+	}
+	if !demonstrates(`launchdarklyfeature.New(sdk)`, "launchdarklyfeature.New") || !demonstrates(`flags.For(target)`, "Features.For") {
+		t.Fatal("qualified call rejected")
 	}
 }
 

@@ -12,6 +12,8 @@ Run from the repository checkout:
 
 ```sh
 go -C driver/openfeaturefeature test -race ./...
+go -C examples run ./openfeature
+INTEGRATION_RUN='TestDriverConformance/openfeature|TestRelay|TestOpenFeature' make test-integration
 ```
 
 Tests verify real SDK hooks, context merging, updates, lifecycle, and independent bindings alongside controlled error boundaries. Service-backed provider tests belong in the integration module. Hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.

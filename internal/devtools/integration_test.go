@@ -36,10 +36,10 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 	if _, err := integrationCases(events, true); err == nil {
 		t.Fatal("missing native and failure verification accepted")
 	}
-	for _, name := range []string{"TestFileRefreshLifecycle", "TestLaunchDarklyStreamingAndEvents", "TestLaunchDarklyStartupFailures", "TestLaunchDarklyBorrowedOwnership", "TestRelayAuthentication", "TestRelayTransportFailures", "TestRelayTypedTargeting", "TestOpenFeatureSDKTypeMismatch"} {
+	for _, name := range []string{"TestFileRefreshLifecycle", "TestLaunchDarklyStreamingAndEvents", "TestLaunchDarklyStartupFailures", "TestLaunchDarklyBorrowedOwnership", "TestRelayAuthentication", "TestRelayContainerOutage", "TestRelayTransportFailures", "TestRelayTypedTargeting", "TestOpenFeatureSDKTypeMismatch"} {
 		add(name)
 	}
-	if count, err := integrationCases(events, true); count != 53 || err != nil {
+	if count, err := integrationCases(events, true); count != 54 || err != nil {
 		t.Fatal(count, err)
 	}
 }
