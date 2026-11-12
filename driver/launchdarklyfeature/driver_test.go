@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -230,6 +231,23 @@ func TestOpenOwnershipAndFailures(t *testing.T) {
 	}
 	if err := driver.Close(); err != feature.ErrUnavailable {
 		t.Fatal(err)
+	}
+}
+
+// TestOfficialSDKConfigurationFailure returns a safe error when the native constructor produces a nil client.
+func TestOfficialSDKConfigurationFailure(t *testing.T) {
+	driver, err := Open(context.Background(), Config{
+		SDKKey: "public-test-placeholder",
+		SDKConfig: ldclient.Config{
+			Logging: ldcomponents.NoLogging(), Events: ldcomponents.NoEvents(),
+			HTTP: ldcomponents.HTTPConfiguration().CACertFile(filepath.Join(t.TempDir(), "missing-private-ca.pem")),
+		},
+	})
+	if driver != nil {
+		_ = driver.Close()
+	}
+	if driver != nil || err != feature.ErrUnavailable {
+		t.Fatalf("driver=%v error=%v", driver, err)
 	}
 }
 

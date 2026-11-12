@@ -59,7 +59,12 @@ func New(client Client) *Driver { return &Driver{client: client} }
 // Cancellation closes a partially initialized client; successful drivers own shutdown.
 func Open(ctx context.Context, config Config) (*Driver, error) {
 	return open(ctx, config, func(key string, config ldclient.Config) (managedClient, error) {
-		return ldclient.MakeCustomClient(key, config, 0)
+		client, err := ldclient.MakeCustomClient(key, config, 0)
+		// Preserve an absent constructor result before converting the native pointer to an interface.
+		if client == nil {
+			return nil, err
+		}
+		return client, err
 	})
 }
 

@@ -2,7 +2,7 @@
   "passed_tests": 87,
   "go_version": "go version go1.27.4 darwin/arm64",
   "race": true,
-  "source_fingerprint": "92e4fbf99877a3adcf4d6f242e240966b2ddd3e01ed5b87251fb61069adb1bb7",
+  "source_fingerprint": "37d5cc83b565b1f68e3971318e1e9a96a19806da7ad9dccc5ff4f07691d10df2",
   "versions": {
     "go-feature-flag": {
       "version": "1.58.1",
