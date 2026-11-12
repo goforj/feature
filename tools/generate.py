@@ -88,7 +88,7 @@ def generate(root=ROOT):
         if not re.search(rf'\b{re.escape(name)}\(', operation):
             raise ValueError(f'{marker} does not demonstrate {name}')
         description = godoc(root, name)
-        groups.setdefault(group, []).append(f'[{name}](#{name.lower()})')
+        groups.setdefault(group, []).append(f'[{name}](#api-{name.lower()})')
         entry = sections.setdefault((group, marker, example), {'names': [], 'docs': [], 'code': operation})
         entry['names'].append(name)
         entry['docs'].append(description)
@@ -100,9 +100,8 @@ def generate(root=ROOT):
         if group != last_group:
             examples.append(f'## {group}')
             last_group = group
-        if len(entry['names']) > 1:
-            for name in entry['names']:
-                examples.append(f'<a id="{name.lower()}"></a>')
+        for name in entry['names']:
+            examples.append(f'<a id="api-{name.lower()}"></a>')
         examples.extend(['### ' + ' · '.join(entry['names']), '\n\n'.join(entry['docs']),
                          '```go\n' + entry['code'] + '\n```'])
     template = (root / 'docs' / 'README.tmpl.md').read_text()

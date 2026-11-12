@@ -46,7 +46,8 @@ class GeneratorTests(unittest.TestCase):
         readme = first.decode()
         self.assertNotIn('{{', readme)
         for group, name, marker, example in generate.ENTRIES:
-            self.assertIn(f'[{name}](#{name.lower()})', readme)
+            self.assertIn(f'[{name}](#api-{name.lower()})', readme)
+            self.assertEqual(readme.count(f'<a id="api-{name.lower()}"></a>'), 1)
             heading = re.search(r'(?m)^### .*\b' + name + r'\b.*$', readme)
             self.assertIsNotNone(heading)
             section = readme[heading.end():].split('\n##', 1)[0]

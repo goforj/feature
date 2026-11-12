@@ -39,7 +39,7 @@ The example constructs an injected client, then enables checkout for a selected 
 {{QUICKSTART}}
 ```
 
-## Sources
+## Available sources
 
 Both sources are included in the root module:
 

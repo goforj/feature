@@ -60,7 +60,7 @@ fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject
 // New checkout: true
 ```
 
-## Sources
+## Available sources
 
 Both sources are included in the root module:
 
@@ -96,18 +96,18 @@ Tests execute these programs and verify their output. Their source is authoritat
 
 | Group | Functions |
 | ---: | :--- |
-| **Construction** | [NewMemorySource](#newmemorysource) · [Open](#open) |
-| **Evaluation** | [Enabled](#enabled) · [Evaluate](#evaluate) |
-| **Consistency** | [Snapshot](#snapshot) |
-| **Sources** | [Decode](#decode) · [NewFileSource](#newfilesource) |
-| **Refresh** | [Replace](#replace) · [Refresh](#refresh) · [Run](#run) |
-| **Inspection** | [Status](#status) |
+| **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
+| **Evaluation** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
+| **Consistency** | [Snapshot](#api-snapshot) |
+| **Sources** | [Decode](#api-decode) · [NewFileSource](#api-newfilesource) |
+| **Refresh** | [Replace](#api-replace) · [Refresh](#api-refresh) · [Run](#api-run) |
+| **Inspection** | [Status](#api-status) |
 
 ## Construction
 
-<a id="newmemorysource"></a>
+<a id="api-newmemorysource"></a>
 
-<a id="open"></a>
+<a id="api-open"></a>
 
 ### NewMemorySource · Open
 
@@ -138,6 +138,8 @@ if err != nil {
 
 ## Evaluation
 
+<a id="api-enabled"></a>
+
 ### Enabled
 
 Enabled returns a local decision and counts fallback failures without recording keys.
@@ -147,6 +149,8 @@ subject := feature.Subject{Key: "tenant:acme"}
 fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject))
 // New checkout: true
 ```
+
+<a id="api-evaluate"></a>
 
 ### Evaluate
 
@@ -160,6 +164,8 @@ fmt.Println("Unknown feature:", decision.Value, decision.Reason)
 
 ## Consistency
 
+<a id="api-snapshot"></a>
+
 ### Snapshot
 
 Snapshot captures the complete current revision without waiting for source I/O.
@@ -171,6 +177,8 @@ fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, featur
 ```
 
 ## Sources
+
+<a id="api-decode"></a>
 
 ### Decode
 
@@ -195,6 +203,8 @@ if err != nil {
 }
 ```
 
+<a id="api-newfilesource"></a>
+
 ### NewFileSource
 
 NewFileSource captures a path without accessing the filesystem. Use a stable absolute path when application code may change its working directory.
@@ -207,6 +217,8 @@ if err != nil {
 ```
 
 ## Refresh
+
+<a id="api-replace"></a>
 
 ### Replace
 
@@ -221,6 +233,8 @@ if err := source.Replace(feature.Document{
 }
 // Existing clients adopt replacements on their next refresh.
 ```
+
+<a id="api-refresh"></a>
 
 ### Refresh
 
@@ -243,6 +257,8 @@ fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, featur
 // Captured checkout: false
 ```
 
+<a id="api-run"></a>
+
 ### Run
 
 Run refreshes on ticks until cancellation, retaining valid state after load errors. The caller owns the goroutine and must wait for Run to return during shutdown.
@@ -255,6 +271,8 @@ go func() { done <- features.Run(runCtx, 20*time.Millisecond) }()
 ```
 
 ## Inspection
+
+<a id="api-status"></a>
 
 ### Status
 
