@@ -85,6 +85,8 @@ Real-container tests prove LaunchDarkly custom data, metrics, and privacy after 
 
 This candidate passed 259 unit cases, all 12 canonical programs, 1729/1729 runtime statements, and 160 separate race-enabled integration cases. Native Go 1.24.13, LaunchDarkly Go 1.25.5, and OpenFeature Go 1.26.0 race suites passed. Module inventory, tidy parity, race checks, vet, maintenance tooling, and generated-document parity passed. Event/lifecycle cases passed ten repeated race runs. Expanded decoder fuzzing completed 3,037,900 executions without a failure. Current reports bind execution totals to source fingerprints; hosted account verification and release publication remain separate.
 
+Linux CI exposed an integration-fixture readiness race: independently published LaunchDarkly flags were not necessarily all visible when the first string flag arrived. Typed fixture setup now waits for every published value, including the update baseline, before running conformance assertions. Evaluation assertions remain immediate after this bounded readiness check. This correction changes test synchronization, not driver behavior.
+
 ## Documentation and distribution
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

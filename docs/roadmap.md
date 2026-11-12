@@ -27,7 +27,7 @@ The [provider study](provider-study.md) informed a provider-neutral client with 
 - [x] Implement direct LaunchDarkly and OpenFeature drivers in optional modules, with explicit borrowed versus owned SDK lifecycles.
 - [x] Add a required shared driver conformance suite plus real SDK tests for updates, failures, context mapping, ownership, cancellation, and concurrent use. The [integration report](integration-results.json) records executed local service and SDK transport evidence.
 - [x] Verify OpenFeature hooks/context precedence and native LaunchDarkly behavior; keep unsupported capabilities explicit.
-- [ ] Inventory every new module, minimum Go requirement, dependency pin, release tag, and public consumer check independently. Preserve the root's Go 1.24 minimum for native-only users.
+- [x] Inventory all five modules, minimum Go requirements, dependency pins, independent tag shapes, and clean private Git consumers. Preserve the root's Go 1.24 minimum for native-only users. Published-version and public-distribution checks remain release gates.
 
 ## Library review before freezing v1
 
@@ -74,7 +74,7 @@ This work belongs in `goforj`, with public guidance in `goforj-docs`.
 ## Later, separately scoped
 
 - [ ] Read-only Lighthouse visibility into each running process's adopted revision, snapshot age, and refresh status.
-- [ ] Shared remote document sources when an application needs cross-host distribution.
+- [ ] Additional dedicated remote connectors when applications require more than the implemented HTTP source and custom source boundary.
 - [ ] Administration commands or UI, with explicit authorization, persistence, and audit behavior.
 
-Statistical experiment analysis, browser SDKs, and additional dedicated vendor drivers remain deferred. Weighted allocation, custom tracking, and evaluation observability are implemented. Typed flag values, native OpenFeature provider support, typed targeting, named variants, scheduled/progressive rules, HTTP sources, and observability primitives are included in the current library build. Broader backend-specific administration and statistical analysis remain separate. The proposed OpenFeature adapter is now part of the pre-v1 driver work above.
+Statistical experiment analysis, browser SDKs, and additional dedicated vendor drivers remain deferred. Weighted allocation, custom tracking, and evaluation observability are implemented. Typed flag values, native OpenFeature provider support, typed targeting, named variants, scheduled/progressive rules, HTTP sources, and observability primitives are included in the current library build. Broader backend-specific administration and statistical analysis remain separate.

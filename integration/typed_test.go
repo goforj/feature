@@ -124,8 +124,19 @@ func newTypedFixture(t *testing.T, name string) typedFixture {
 		}
 	}
 	eventually(t, func() bool {
-		d := fixture.flags.For(feature.Target{Key: "probe"}).String(ctx, prefix+"string", "fallback")
-		return d.Err == nil && d.Value == "blue"
+		// Relay publishes flags independently, so one visible flag cannot establish fixture readiness.
+		scope := fixture.flags.For(feature.Target{Key: "probe"})
+		text := scope.String(ctx, prefix+"string", "fallback")
+		integer := scope.Int(ctx, prefix+"int", 0)
+		decimal := scope.Float(ctx, prefix+"float", 0)
+		object := scope.Object(ctx, prefix+"object", map[string]any{})
+		update := scope.String(ctx, prefix+"update", "fallback")
+		attributes, ok := object.Value.(map[string]any)
+		return text.Err == nil && text.Value == "blue" &&
+			integer.Err == nil && integer.Value == 12 &&
+			decimal.Err == nil && decimal.Value == 1.25 &&
+			object.Err == nil && ok && attributes["color"] == "blue" &&
+			update.Err == nil && update.Value == "before"
 	})
 	return fixture
 }

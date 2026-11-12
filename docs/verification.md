@@ -2,7 +2,7 @@
 
 The latest [multi-pass review](review.md) records reproduced lifecycle fixes, coverage-gate hardening, compatibility decisions, and remaining publication work.
 
-The standalone library includes native memory/file evaluation, a portable typed facade, and optional direct LaunchDarkly and OpenFeature SDK adapters. Framework wiring, typed flag values, hosted account verification, and release publication remain separate work.
+The standalone library includes native memory/file/HTTP evaluation, a portable typed facade, optional direct LaunchDarkly and OpenFeature SDK adapters, and a native OpenFeature provider. Typed targeting, variants, weighted splits, scheduled/progressive rollouts, and observable event delivery are implemented. Framework wiring, hosted account verification, and release publication remain separate work.
 
 ## Executed checks
 
@@ -14,9 +14,24 @@ Both the direct LaunchDarkly driver and OpenFeature LaunchDarkly provider run th
 
 `make test-race vet tidy modules-check test-tools generate check-generated` passed. Tidy checks all five modules; vet includes integration-tagged code. Documentation generation checks two-pass byte parity. `govulncheck` v1.9.0 on Go 1.27.4 found no vulnerabilities in any of the three runtime packages. The scan does not certify every test dependency or container image.
 
+## Expanded clean Git consumers
+
+Four independent consumers installed the expanded library outside the checkout using actual Git pseudo-versions, with `GOWORK=off`, no local replacements, and race detection. Each exercised the APIs rather than only compiling an import.
+
+| Consumer | Executed toolchain | Selected runtime modules |
+| :--- | :--- | :--- |
+| Native only | Go 1.24.13 | Root `v0.0.0-20261112111010-76d41d886154` |
+| LaunchDarkly only | Go 1.25.5 | Driver `v0.0.0-20261112111340-ad4de13b8a00`, declared root `76d41d886154` |
+| OpenFeature only | Go 1.26.0 | Driver `v0.0.0-20261112111340-ad4de13b8a00`, declared root `76d41d886154` |
+| Native and both drivers | Go 1.27.4 | Both drivers `ad4de13b8a00`, root `76d41d886154` |
+
+The native consumer checked typed values, encoding/decoding, conditions, named variants, captured time, refresh, snapshots, and custom tracking. The LaunchDarkly consumer used the actual SDK test-data source for all four additional value types and event submission. The OpenFeature consumer used the ordinary SDK with the native provider, including an integer beyond float64's exact range, tracking, and borrowed-engine ownership. The combined consumer exercised all three workflows together. Adapter-only consumers selected their declared root requirement without forcing an upgrade.
+
+Selected module metadata contained no replacements. Public dependencies used normal checksum verification; the private first-party repository used authenticated Git and `GOPRIVATE=github.com/goforj/feature`. These checks establish installation under the current private Git access model, not public-proxy availability or a versioned release. The eventual release must repeat installation against its independently published module versions.
+
 ## Historical clean Git consumers
 
-These checks apply to the earlier boolean candidate. Repeat independent installation for the expanded typed API before freezing the release. Independent consumers installed reviewed source commit `8e7a76c0f17b6e6e0e8cb3042a19de2f231ae9fa` using actual Go pseudo-versions outside the checkout, with `GOWORK=off` and no replacements. Each consumer performed a successful boolean evaluation with race detection. Native and combined consumers checked validation precedence, revisions, and counters. LaunchDarkly and combined consumers exercised invalid TLS configuration and cancellation from an actual SDK component factory. OpenFeature and combined consumers verified that a real provider cleanup error survives repeated Close calls:
+These checks apply to the earlier boolean candidate. Independent consumers installed reviewed source commit `8e7a76c0f17b6e6e0e8cb3042a19de2f231ae9fa` using actual Go pseudo-versions outside the checkout, with `GOWORK=off` and no replacements. Each consumer performed a successful boolean evaluation with race detection. Native and combined consumers checked validation precedence, revisions, and counters. LaunchDarkly and combined consumers exercised invalid TLS configuration and cancellation from an actual SDK component factory. OpenFeature and combined consumers verified that a real provider cleanup error survives repeated Close calls:
 
 | Consumer | Executed toolchain | Selected native root |
 | :--- | :--- | :--- |
