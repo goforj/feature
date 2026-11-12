@@ -135,6 +135,8 @@ Defaults, rule results, and optional off values must have the same type. Disable
 
 Features and Scope expose String, Int, Float, and Object with explicit fallbacks and Result values. Wrong-type requests return ErrTypeMismatch. Drivers without the optional TypedEvaluator contract return ErrUnsupported. Validated fallback and successful object containers are copied. Native View has matching typed reads against one immutable revision. Native counters include typed reads through Client.
 
+The facade keeps its failure fallback separate from the object argument supplied to a custom evaluator. Mutating that argument cannot change the caller's original fallback or the value returned after a failed or invalid resolution. Successful returned object containers are also detached from evaluator-owned containers.
+
 Native integers retain int64 precision. The direct LaunchDarkly adapter rejects integer values outside the exact IEEE-754 range or with a fractional component. Other SDK providers retain their numeric semantics. The [capability matrix](capabilities.md) records these differences.
 
 LaunchDarkly object numbers retain the SDK's float64 representation. Earlier adapter code normalized integer-looking JSON tokens to int64, which could change the numeric value during conversion. Consumers asserting int64 inside LaunchDarkly object results must accept float64 instead. Native object integers remain int64. Use typed Int evaluation for an integer flag with portable precision checks.
@@ -152,6 +154,8 @@ Schema 2 adds variants, default_variant, off_variant, and rule variant or split 
 Conditions are ANDed within each rule. Operators are eq, ne, in, not_in, gt, ge, lt, le, contains, prefix, suffix, matches, exists, and missing. Comparisons require presence except missing; an explicit null is present. Numbers compare without narrowing int64 values, including inside JSON object and array equality. No string-to-number conversion occurs. Literal attribute names are supported, while a leading slash selects JSON Pointer traversal with ~0 and ~1 escaping. $key and $kind select explicit identity fields. Patterns are bounded RE2 expressions compiled before publication.
 
 Unsigned targeting integers retain their full uint64 range during numeric comparisons, including nested arrays and objects. This does not expand the signed int64 range of configured flag values or comparison literals.
+
+Supported time.Time target attributes remain distinct from JSON literals during equality, inequality, and membership checks. They do not prevent matching other elements in mixed arrays. Native comparisons do not format time attributes as strings or convert them to numbers; configured flag values and comparison literals remain JSON-compatible.
 
 Rule start is inclusive and end is exclusive. A progressive rollout declares absolute start and end instants and integer from/to percentages in basis points. Percentages clamp before and after the interval and interpolate within it; increasing and decreasing rollouts are supported. A percentage still requires an identity at 100 percent. Calendar behavior is evaluated without a scheduling worker. Native View captures evaluation time together with its immutable definitions, and it implements TypedEvaluator for ordinary scoped use through New(view).
 

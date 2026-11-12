@@ -7,6 +7,7 @@ import (
 )
 
 // TypedEvaluator extends boolean drivers with all portable flag value types.
+// Features supplies an owned object fallback and preserves a separate copy for failures.
 type TypedEvaluator interface {
 	Evaluator
 	ResolveString(context.Context, string, string, Target) Result[string]
@@ -45,7 +46,13 @@ func resolveTyped[T any](f *Features, ctx context.Context, key string, fallback 
 		result.Err = ErrUnsupported
 		return result
 	}
-	decision := resolve(driver, result.Value)
+	argument := result.Value
+	if kind == TypeObject {
+		// The validated fallback must survive mutations made by a custom evaluator.
+		owned, _ := CloneValue(result.Value)
+		argument = owned.(T)
+	}
+	decision := resolve(driver, argument)
 	if decision.Err != nil {
 		decision.Value = result.Value
 		decision.Err = safeError(decision.Err)

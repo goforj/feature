@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -55,8 +56,8 @@ func CloneValue(value any) (any, error) {
 }
 
 // cloneValue accounts for allocation before recursively owning a JSON value.
-// Unsigned mode is reserved for targeting comparisons rather than persisted flag values.
-func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, error) {
+// Target mode preserves supported context leaves outside the persisted flag-value domain.
+func cloneValue(value any, depth int, budget *int, target bool) (any, error) {
 	*budget += 16
 	if depth > 8 || *budget > MaxValueBytes {
 		return nil, ErrInvalidValue
@@ -64,6 +65,11 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 	switch value := value.(type) {
 	case nil, bool, int64:
 		return value, nil
+	case time.Time:
+		if target {
+			return value, nil
+		}
+		return nil, ErrInvalidValue
 	case string:
 		*budget += len(value)
 		if !utf8.ValidString(value) || *budget > MaxValueBytes {
@@ -79,7 +85,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 	case int32:
 		return int64(value), nil
 	case uint:
-		return cloneUnsigned(uint64(value), allowUnsigned)
+		return cloneUnsigned(uint64(value), target)
 	case uint8:
 		return int64(value), nil
 	case uint16:
@@ -87,7 +93,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 	case uint32:
 		return int64(value), nil
 	case uint64:
-		return cloneUnsigned(value, allowUnsigned)
+		return cloneUnsigned(value, target)
 	case float32:
 		return cloneFloat(float64(value))
 	case float64:
@@ -118,7 +124,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 			if !utf8.ValidString(key) {
 				return nil, ErrInvalidValue
 			}
-			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
+			next, err := cloneValue(item, depth+1, budget, target)
 			if err != nil {
 				return nil, err
 			}
@@ -135,7 +141,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 			if !utf8.ValidString(key) {
 				return nil, ErrInvalidValue
 			}
-			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
+			next, err := cloneValue(item, depth+1, budget, target)
 			if err != nil {
 				return nil, err
 			}
@@ -148,7 +154,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 		}
 		result := make([]any, len(value))
 		for i, item := range value {
-			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
+			next, err := cloneValue(item, depth+1, budget, target)
 			if err != nil {
 				return nil, err
 			}
@@ -161,7 +167,7 @@ func cloneValue(value any, depth int, budget *int, allowUnsigned bool) (any, err
 		}
 		result := make([]any, len(value))
 		for index, item := range value {
-			next, err := cloneValue(item, depth+1, budget, allowUnsigned)
+			next, err := cloneValue(item, depth+1, budget, target)
 			if err != nil {
 				return nil, err
 			}

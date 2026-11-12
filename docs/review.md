@@ -135,6 +135,18 @@ Public signatures, persisted document formats, stable rollout buckets, dependenc
 
 The final local gate passed 351 unit cases, all 12 programs, and 1834/1834 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Independent progressive, schema 1, and split checks passed 20 repetitions, and both original numeric probes passed after the fixes.
 
+## Property and evaluator-ownership review
+
+Four additional independent reviews examined generated definitions, evaluation properties, real SDK behavior, and input/security boundaries. Persistence probes generated 40,000 accepted schema 2 documents with typed zeroes, variants, default/off actions, splits, schedules, conditions, and nested JSON. Every accepted document preserved canonical bytes through encoding, decoding, and memory-source loading. Separate structural mutations preserved stable round trips for all accepted inputs. Neither persistence nor boundary review found a new defect.
+
+Evaluation review reproduced two issues. A supported time.Time leaf made an entire mixed target array ineligible for contains, even when another element matched. The same normalization prevented negative comparisons on time-containing values. Target comparison normalization now preserves those leaves without adding time literals to persisted flag definitions or coercing dates to strings or numbers. Regressions exercise Client, View, and scoped facade paths, mixed arrays, nested objects, negative comparisons, and nonnumeric operations.
+
+The facade also passed its only preserved object fallback copy to custom evaluators. A mutation followed by an error or invalid result changed the fallback returned to the caller. Object evaluation now supplies a separate argument copy while retaining an independent failure value. Tests cover map and array roots, nested mutations, scoped and unscoped calls, errors, invalid successful results, and two-way ownership after return. Scalar paths are unchanged.
+
+Both fixes passed independent re-review and their original external reproductions. A real isolated OpenFeature SDK probe passed 20 race-enabled repetitions for mixed time contexts and a hook that mutates and rejects object fallback evaluation. Public signatures, configured value domains, persisted formats, revisions, dependencies, and Go minimums are unchanged.
+
+The final local gate passed 378 unit cases, all 12 programs, and 1841/1841 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, generated-document parity, and the native Go 1.24.13 race suite passed. Independent targeted regressions also passed 10 race-enabled repetitions.
+
 ## Distribution inventory
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.
