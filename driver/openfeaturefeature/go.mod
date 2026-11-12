@@ -3,7 +3,7 @@ module github.com/goforj/feature/driver/openfeaturefeature
 go 1.26.0
 
 require (
-	github.com/goforj/feature v0.0.0-20261112042425-331a16e2f707
+	github.com/goforj/feature v0.0.0-20261112095403-815ca4425982
 	github.com/open-feature/go-sdk v1.20.0
 )
 
