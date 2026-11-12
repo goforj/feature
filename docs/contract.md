@@ -68,6 +68,8 @@ Golden vectors in evaluate_test.go freeze this encoding. Increasing a rollout pe
 
 Refresh loads and validates away from readers, serializes source loads, and publishes one complete immutable document through a pointer swap. Cancellation while waiting for another refresh does not start an additional load. Cancellation races at publication follow normal operation-completion semantics: a completed refresh can succeed as cancellation arrives.
 
+Refresh rechecks cancellation after acquiring its source gate, including when acquisition and cancellation are simultaneously ready. The native typed Resolve adapter applies the same cancellation and key-validation precedence as Evaluate before converting target attributes; these early failures retain native revision and counter behavior.
+
 Snapshot captures a revision that remains fixed for its lifetime. Use one View for multiple decisions when a request or job needs consistency. Independent Client calls can legitimately see different revisions. Existing views may retain older document memory until callers release them.
 
 Revision hashes the normalized validated document, not its timestamp or raw file bytes. JSON whitespace, object-key order, and subject-list order do not change revision. Rule ordering and other document changes can change it. Revisions identify definitions, not every possible semantic equivalence.
@@ -118,3 +120,5 @@ Native Client implements Evaluator through Resolve. Its existing Open, Evaluate,
 SDK adapters expose Close on their concrete drivers. New borrows its SDK client; closing that adapter disables only the adapter. Open owns its SDK resources and initialization cleanup. Concurrent Close calls wait for one cleanup attempt and return its same classified result, including repeated calls after cleanup failure. Calls already evaluating when closure begins follow the native SDK's lifecycle semantics; new evaluations return ErrClosed.
 
 OpenFeature Open honors cancellation observed before publishing a successfully initialized driver. Cleanup supplies a five-second context deadline, but context-aware provider implementations must cooperate with it. Legacy provider shutdown has no context parameter, so the SDK cannot impose a hard timeout on such a provider. Applications must supply bounded initialization contexts and providers with appropriate shutdown behavior. LaunchDarkly shutdown uses the native SDK's configured flush and timeout policy.
+
+LaunchDarkly also preserves cancellation when SDK construction fails, after disposing of any partial client. Its initialization budget does not forcibly interrupt synchronous native component factories; custom SDK factories must bound their own I/O.

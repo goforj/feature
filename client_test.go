@@ -151,6 +151,45 @@ func TestRefreshFailureClassification(t *testing.T) {
 	}
 }
 
+// cancelAfterCheckContext cancels immediately after the first live error observation.
+type cancelAfterCheckContext struct {
+	context.Context
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+// Err coordinates cancellation at the pre-acquisition checkpoint without a scheduler delay.
+func (c *cancelAfterCheckContext) Err() error {
+	err := c.Context.Err()
+	c.once.Do(c.cancel)
+	return err
+}
+
+// TestRefreshAcquisitionCancellation prevents source work whichever ready select branch wins.
+func TestRefreshAcquisitionCancellation(t *testing.T) {
+	var loads atomic.Int32
+	source := sourceFunc(func(ctx context.Context) (Document, error) {
+		loads.Add(1)
+		return sampleDocument(), ctx.Err()
+	})
+	client, err := Open(context.Background(), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loads.Store(0)
+	for i := 0; i < 128; i++ {
+		base, cancel := context.WithCancel(context.Background())
+		ctx := &cancelAfterCheckContext{Context: base, cancel: cancel}
+		if err := client.Refresh(ctx); err != context.Canceled {
+			t.Fatal(err)
+		}
+		cancel()
+	}
+	if loads.Load() != 0 {
+		t.Fatal("canceled refresh entered the source", loads.Load())
+	}
+}
+
 // TestRefreshWaitingCancellation proves queued callers cancel without starting another source load.
 func TestRefreshWaitingCancellation(t *testing.T) {
 	ctx := context.Background()

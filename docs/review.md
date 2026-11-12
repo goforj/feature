@@ -27,7 +27,21 @@ The unit command previously trusted the listed modules without checking for unli
 
 Unit coverage remains an exact independent requirement. Integration coverage cannot fill unit gaps. The current [unit](unit-results.json) and [integration](integration-results.json) reports provide measured totals and source fingerprints.
 
-The reviewed candidate passed exact unit coverage, all 75 container/SDK integration cases with race detection, race checks and vet across relevant modules, tidy parity, module inventory, executable examples, and generated-document parity. Minimum-version suites passed on Go 1.24.13, 1.25.5, and 1.26.0. Decoder fuzzing completed 70,612 executions without a failure. Fresh govulncheck v1.9.0 scans on Go 1.27.4 found no vulnerabilities in any runtime package.
+The first reviewed candidate passed exact unit coverage, all 75 then-required container/SDK integration cases with race detection, race checks and vet across relevant modules, tidy parity, module inventory, executable examples, and generated-document parity. Minimum-version suites passed on Go 1.24.13, 1.25.5, and 1.26.0. Decoder fuzzing completed 70,612 executions without a failure. Fresh govulncheck v1.9.0 scans on Go 1.27.4 found no vulnerabilities in any runtime package. Subsequent review results are recorded below and in the current execution reports.
+
+## Additional cancellation and interoperability passes
+
+Three more concrete findings were reproduced before changing runtime code:
+
+1. Refresh could choose a ready source-gate acquisition after its context was canceled. The old implementation entered the source 58 times in the 128-attempt checkpoint regression. Refresh now checks cancellation again after acquisition, before invoking the source. The test coordinates cancellation at the pre-acquisition observation and requires no source calls regardless of which ready select branch wins.
+2. LaunchDarkly SDK construction errors replaced concurrent caller cancellation with ErrUnavailable. Cancellation now takes precedence after partial-client cleanup, including constructors that return no client. Both paths have direct regressions.
+3. Native typed Resolve validated target data before checking cancellation or key grammar. With invalid targets it disagreed with native Evaluate and omitted revision and accounting information. These early failures now delegate to Evaluate before conversion, preserving native precedence, revisions, and counters. Tests compare complete decisions and accounting for the conflicting-input combinations.
+
+The affected cancellation suites passed twenty repeated race runs. New real-Relay tests passed three repeated race runs for both direct and OpenFeature adapters. They exercise multi-kind targeting, boolean/numeric rules, configured true off-variations, and wire-level privacy. Privacy assertions require a redacted private email, preserved public attributes and native redaction metadata, no secret in any forwarded batch, and a successful unredacted control.
+
+The full integration gate now also requires those context cases and verifies that support metadata agrees with image constants and actual selected SDK/provider module versions. Earlier metadata checks only proved the running service version against code constants; they could not detect a report-only version edit. Version-report drift now fails verification. Initialization documentation also makes the native SDK factory deadline limit explicit.
+
+This follow-up passed all 87 required integration cases with race detection, exact 562/562 runtime unit statement coverage, all seven executable programs, race and vet checks, tidy and module inventory checks, and generated-document parity. Minimum-version suites and all three runtime vulnerability scans also passed. The public signatures, schema, rollout encoding, dependency versions, and module Go minimums are unchanged.
 
 ## Documentation and distribution
 

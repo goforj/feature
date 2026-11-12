@@ -94,6 +94,16 @@ func integrationCases(events []byte, full bool) (int, error) {
 				return 0, fmt.Errorf("missing LaunchDarkly Relay integration: %s", scenario)
 			}
 		}
+		if !passed["TestBackendVersionPins"] {
+			return 0, errors.New("missing selected backend version verification")
+		}
+		for _, adapter := range []string{"direct", "openfeature"} {
+			for _, scenario := range []string{"multi-identity", "typed-targeting", "off-variation", "privacy"} {
+				if !passed["TestLaunchDarklyRelayContexts/"+adapter+"/"+scenario] {
+					return 0, fmt.Errorf("missing Relay context verification: %s/%s", adapter, scenario)
+				}
+			}
+		}
 	}
 	return len(passed), nil
 }

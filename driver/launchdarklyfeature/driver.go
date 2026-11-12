@@ -36,6 +36,7 @@ type managedClient interface {
 // Config supplies explicit SDK credentials, native options, and bounded initialization.
 // SDKConfig retains native transport, privacy, event, and data-source configuration.
 // InitTimeout defaults to five seconds; the caller's deadline can shorten it.
+// Synchronous SDK component factories must enforce their own I/O deadlines.
 type Config struct {
 	SDKKey      string
 	SDKConfig   ldclient.Config
@@ -80,6 +81,9 @@ func open(ctx context.Context, config Config, create func(string, ldclient.Confi
 	if err != nil {
 		if client != nil {
 			_ = client.Close()
+		}
+		if err := waitCtx.Err(); err != nil {
+			return nil, err
 		}
 		return nil, feature.ErrUnavailable
 	}

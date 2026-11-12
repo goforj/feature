@@ -79,6 +79,10 @@ func (c *Client) Refresh(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+	// Acquisition and cancellation may both be ready, so recheck before invoking a source.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	attempt := time.Now()
 	doc, err := c.source.Load(ctx)
 	if err != nil {

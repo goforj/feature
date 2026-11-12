@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -36,17 +37,19 @@ const (
 
 // launchDarklyFixture serves native SDK traffic through one official Relay container per package run.
 type launchDarklyFixture struct {
-	container testcontainers.Container
-	upstream  *httptest.Server
-	endpoint  string
-	stop      chan struct{}
-	err       error
-	mu        sync.Mutex
-	flags     map[string]ldmodel.FeatureFlag
-	listeners map[chan struct{}]bool
-	events    map[string]int
-	version   int
-	streams   atomic.Int64
+	container    testcontainers.Container
+	upstream     *httptest.Server
+	endpoint     string
+	stop         chan struct{}
+	err          error
+	mu           sync.Mutex
+	flags        map[string]ldmodel.FeatureFlag
+	listeners    map[chan struct{}]bool
+	events       map[string]int
+	contexts     map[string]json.RawMessage
+	privateLeaks map[string]bool
+	version      int
+	streams      atomic.Int64
 }
 
 var launchDarklyPool = struct {
@@ -63,6 +66,8 @@ func launchDarklyRelay(t *testing.T) *launchDarklyFixture {
 		fixture.flags = make(map[string]ldmodel.FeatureFlag)
 		fixture.listeners = make(map[chan struct{}]bool)
 		fixture.events = make(map[string]int)
+		fixture.contexts = make(map[string]json.RawMessage)
+		fixture.privateLeaks = make(map[string]bool)
 		fixture.publish(relayFlag("bootstrap", false).Build())
 		fixture.upstream = httptest.NewServer(http.HandlerFunc(fixture.serve))
 		port := fixture.upstream.Listener.Addr().(*net.TCPAddr).Port
@@ -226,8 +231,12 @@ func (f *launchDarklyFixture) acceptEvents(w http.ResponseWriter, r *http.Reques
 		body = io.LimitReader(reader, 1<<20)
 	}
 	if r.URL.Path == "/bulk" {
-		var events []struct{ Kind, Key string }
-		if err := json.NewDecoder(body).Decode(&events); err != nil {
+		data, err := io.ReadAll(body)
+		var events []struct {
+			Kind, Key string
+			Context   json.RawMessage
+		}
+		if err != nil || json.Unmarshal(data, &events) != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -235,6 +244,17 @@ func (f *launchDarklyFixture) acceptEvents(w http.ResponseWriter, r *http.Reques
 		for _, event := range events {
 			if event.Kind == "feature" {
 				f.events[event.Key]++
+			}
+			if event.Kind == "index" {
+				var identity struct{ Key string }
+				if json.Unmarshal(event.Context, &identity) == nil && identity.Key != "" {
+					f.contexts[identity.Key] = event.Context
+				}
+			}
+		}
+		for secret := range f.privateLeaks {
+			if bytes.Contains(data, []byte(secret)) {
+				f.privateLeaks[secret] = true
 			}
 		}
 		f.mu.Unlock()

@@ -45,7 +45,19 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 	for _, scenario := range []string{"configured-off-variation", "authentication", "container-outage-and-recovery", "analytics-on-close"} {
 		add("TestLaunchDarklyRelay/" + scenario)
 	}
-	if count, err := integrationCases(events, true); count != 58 || err != nil {
+	if _, err := integrationCases(events, true); err == nil {
+		t.Fatal("missing backend version verification accepted")
+	}
+	add("TestBackendVersionPins")
+	if _, err := integrationCases(events, true); err == nil {
+		t.Fatal("missing provider context verification accepted")
+	}
+	for _, adapter := range []string{"direct", "openfeature"} {
+		for _, scenario := range []string{"multi-identity", "typed-targeting", "off-variation", "privacy"} {
+			add("TestLaunchDarklyRelayContexts/" + adapter + "/" + scenario)
+		}
+	}
+	if count, err := integrationCases(events, true); count != 67 || err != nil {
 		t.Fatal(count, err)
 	}
 }

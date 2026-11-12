@@ -167,6 +167,29 @@ func TestScopeOwnsContextAndSupportsConcurrentUse(t *testing.T) {
 	}
 }
 
+// TestNativeResolutionValidationOrder preserves cancellation and key precedence before typed target conversion.
+func TestNativeResolutionValidationOrder(t *testing.T) {
+	client, _ := openMemory(t)
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, tc := range []struct {
+		ctx context.Context
+		key string
+	}{
+		{canceled, "checkout-v2"}, {context.Background(), "invalid:key"}, {canceled, "invalid:key"},
+	} {
+		before := client.Status().Evaluations
+		want := client.Evaluate(tc.ctx, tc.key, true, Subject{})
+		got := client.Resolve(tc.ctx, tc.key, true, Target{Attributes: map[string]any{"unsupported": func() {}}})
+		if got != want {
+			t.Errorf("Resolve=%+v Evaluate=%+v", got, want)
+		}
+		if count := client.Status().Evaluations; count != before+2 {
+			t.Errorf("native accounting changed: %d", count-before)
+		}
+	}
+}
+
 // TestNativeResolutionKeepsExistingContracts adapts portable targets without string coercion.
 func TestNativeResolutionKeepsExistingContracts(t *testing.T) {
 	ctx := context.Background()

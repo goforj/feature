@@ -237,6 +237,9 @@ func safeError(err error) error {
 // Native rules match only string attributes; typed non-string attributes do not match.
 // Kind does not alter native identity hashing or its explicit key convention.
 func (c *Client) Resolve(ctx context.Context, key string, fallback bool, target Target) Decision {
+	if ctx.Err() != nil || !validKey(key) {
+		return c.Evaluate(ctx, key, fallback, Subject{})
+	}
 	owned, err := target.Clone()
 	if err != nil {
 		return Decision{Value: fallback, Reason: ReasonError, Err: err}

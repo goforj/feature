@@ -233,6 +233,37 @@ func TestOpenOwnershipAndFailures(t *testing.T) {
 	}
 }
 
+// TestFailedCreationKeepsCancellation checks error precedence even when SDK construction only partially succeeds.
+func TestFailedCreationKeepsCancellation(t *testing.T) {
+	for _, partial := range []bool{false, true} {
+		t.Run(fmt.Sprint(partial), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			sdk := &testClient{}
+			driver, err := open(ctx, Config{SDKKey: "public-test-placeholder"}, func(string, ldclient.Config) (managedClient, error) {
+				cancel()
+				if partial {
+					return sdk, errors.New("private constructor diagnostic")
+				}
+				return nil, errors.New("private constructor diagnostic")
+			})
+			if driver != nil {
+				_ = driver.Close()
+			}
+			if driver != nil || err != context.Canceled {
+				t.Fatalf("driver=%v error=%v", driver, err)
+			}
+			want := int32(0)
+			if partial {
+				want = 1
+			}
+			if sdk.closes.Load() != want {
+				t.Fatal("partial SDK cleanup changed", sdk.closes.Load())
+			}
+		})
+	}
+}
+
 // TestOfficialSDKThroughOwnedDriver exercises the actual engine and live updates without cloud credentials.
 func TestOfficialSDKThroughOwnedDriver(t *testing.T) {
 	ctx := context.Background()
