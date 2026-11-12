@@ -177,11 +177,12 @@ func (e *HTTPExporter) Track(ctx context.Context, name string, target Target, ev
 }
 
 // Notify sends revision metadata and safe failure classification without flag values.
+// A complete replacement can include MaxFlags removed keys and MaxFlags added keys.
 func (e *HTTPExporter) Notify(ctx context.Context, change Change) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !validString(change.Revision) || !validString(change.PreviousRevision) || len(change.Keys) > MaxFlags {
+	if !validString(change.Revision) || !validString(change.PreviousRevision) || len(change.Keys) > 2*MaxFlags {
 		return ErrInvalidValue
 	}
 	for _, key := range change.Keys {

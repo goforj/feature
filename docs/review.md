@@ -172,3 +172,11 @@ There are no release tags or release scripts yet. The published-module inventory
 | github.com/goforj/feature/driver/openfeaturefeature | driver/openfeaturefeature/vX.Y.Z |
 
 A root tag does not publish either driver. Before a versioned release, select intended root requirements for each driver, preserve development replacements, and repeat independent and combined consumer tests with GOWORK=off and no replacements against actual published versions. Fresh private Git consumers passed against the reviewed runtime commit, including a real OpenFeature provider shutdown-error regression also retained in the unit suite. Exact versions and toolchains are recorded in [verification](verification.md). Public distribution, hosted LaunchDarkly account checks, Codecov configuration, and real GoForj App adoption remain separate pending work.
+
+## Renewed production boundary review
+
+A further independent review covered native decision composition, SDK lifecycle and forwarding, HTTP resources, and the verification pipeline. It found a notification-boundary mismatch: a complete replacement of 1024 flags with 1024 different flags produces 2048 changed keys, while HTTPExporter.Notify accepted at most 1024. Publication succeeded, but the native HTTP notifier recorded ErrInvalidValue and omitted the webhook.
+
+The exporter now accepts the bounded union of two valid inventories, up to 2*MaxFlags. The regression failed against the preceding implementation, then passed ten race-enabled repetitions. It exercises native publication through a real local HTTP endpoint, verifies every added and removed key and both revisions, and rejects larger lists before delivery. An independent external public-API reproduction confirmed delivery and a cleared LastNotifyError after the fix. This corrects runtime notification behavior without changing API signatures, configuration, persisted documents, or minimum Go versions.
+
+The fresh driver review found no actionable issue under the documented SDK contracts. Both adapter modules passed ten shuffled race-enabled repetitions. The unchanged starting candidate also passed three complete shuffled race-enabled container integration repetitions with seed 972611. Subsequent candidate checks and closure review are recorded in the current execution evidence and readiness assessment.

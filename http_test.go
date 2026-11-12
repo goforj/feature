@@ -2,7 +2,9 @@ package feature
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +13,73 @@ import (
 	"testing"
 	"time"
 )
+
+// TestHTTPExporterInventoryReplacement preserves removed and added keys in one bounded webhook.
+func TestHTTPExporterInventoryReplacement(t *testing.T) {
+	ctx := context.Background()
+	payloads := make(chan Change, 3)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Type   string `json:"type"`
+			Change Change `json:"change"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Error(err)
+		}
+		if payload.Type != "change" {
+			t.Error("unexpected webhook type", payload.Type)
+		}
+		payloads <- payload.Change
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	exporter, err := NewHTTPExporter(ExporterConfig{HTTP: HTTPConfig{URL: server.URL}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := Document{Schema: SchemaVersion, Flags: make(map[string]Flag)}
+	after := Document{Schema: SchemaVersion, Flags: make(map[string]Flag)}
+	for index := 0; index < MaxFlags; index++ {
+		before.Flags[fmt.Sprintf("before-%04d", index)] = Flag{Default: false}
+		after.Flags[fmt.Sprintf("after-%04d", index)] = Flag{Default: true}
+	}
+	source, err := NewMemorySource(before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := Open(ctx, source, WithNotifier(exporter))
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial := <-payloads
+	if len(initial.Keys) != MaxFlags {
+		t.Fatal("incomplete initial inventory", len(initial.Keys))
+	}
+	if err := source.Replace(after); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Status().LastNotifyError; err != nil {
+		t.Fatal("valid inventory replacement rejected", err)
+	}
+	change := <-payloads
+	if len(change.Keys) != 2*MaxFlags || change.PreviousRevision != initial.Revision || change.Revision != engine.Status().Revision {
+		t.Fatal("incomplete inventory replacement", change)
+	}
+	for index := 0; index < MaxFlags; index++ {
+		if change.Keys[index] != fmt.Sprintf("after-%04d", index) || change.Keys[index+MaxFlags] != fmt.Sprintf("before-%04d", index) {
+			t.Fatal("missing added or removed key", index)
+		}
+	}
+	if err := exporter.Notify(ctx, Change{Keys: make([]string, 2*MaxFlags+1)}); err != ErrInvalidValue {
+		t.Fatal("oversized change accepted", err)
+	}
+	if len(payloads) != 0 {
+		t.Fatal("invalid change reached endpoint")
+	}
+}
 
 // roundTripperFunc controls transport failures while preserving the real request policy.
 type roundTripperFunc func(*http.Request) (*http.Response, error)

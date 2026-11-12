@@ -17,16 +17,17 @@ Coverage establishes executed statements, not completeness. Review, property che
 
 ## Current assessment
 
-The production audit found and resolved two issues:
+The production audit and renewed boundary review found and resolved three issues:
 
 1. A 1010-byte regular expression expanded into about one million instructions and retained about 43 MB for one condition. Multiple such conditions fit the previous document budget. The fix preflights estimated expansion before compilation, caps each pattern and the complete document, and reuses immutable validated programs.
 2. Structured conditions repeatedly normalized the same attribute. A supported large configuration allocated about 71 MB per evaluation. The fix owns a lazy structured comparison cache for each evaluation and preserves scalar behavior.
+3. A complete replacement of two disjoint maximum-size inventories produced 2048 changed keys, but the HTTP notifier accepted only 1024. The exporter now accepts the bounded union and a native-to-HTTP regression verifies all added and removed keys.
 
 Closure review also caught Unicode table backing and anchored one-pass optimizer storage that an instruction-only limit missed. The final estimator covers both and rejects the original counterexamples before full compilation. Independent full-compiler storage oracles passed on Go 1.24.0 and 1.27.4, including 29,641 accepted current-Go and 29,659 accepted minimum-Go patterns, with no storage underestimates. A separate final oracle covered 11,695 accepted patterns.
 
 Two fresh closure rounds then found no new actionable issue in the documented supported usage. Native/API and security reviewers covered the first round; independent cross-module and adversarial boundary reviewers covered the second. Generated evaluation/persistence properties, actual SDK probes, and repeated lifecycle stress supplied separate evidence.
 
-The local candidate passed 418 unit cases, all 12 executable programs, exact 1966/1966 runtime statement coverage, and 160 separate race-enabled integration cases. The complete container suite also passed five shuffled race-enabled repetitions with package-owned services. Minimum Go 1.24.13, 1.25.5, and 1.26.0 race checks passed, as did Linux/386 test-binary compilation, vet, tidy parity, module inventory, and generated-document parity. Govulncheck v1.9.0 on Go 1.27.4 found no runtime-package vulnerabilities.
+The local candidate passed 419 unit cases, all 12 executable programs, exact 1966/1966 runtime statement coverage, and 160 separate race-enabled integration cases. The complete container suite also passed five shuffled race-enabled repetitions with package-owned services. Minimum Go 1.24.13, 1.25.5, and 1.26.0 race checks passed, as did Linux/386 test-binary compilation, vet, tidy parity, module inventory, and generated-document parity. Govulncheck v1.9.0 on Go 1.27.4 found no runtime-package vulnerabilities.
 
 Independent [performance measurements](performance.md) show the representative structured case improving from 121.502 us and 222,424 bytes to 17.713 us and 7,680 bytes. The largest supported fixture improved from 42.723 ms and 71,387,544 bytes to 5.935 ms and 70,528 bytes. Scalar allocation counts are unchanged. These are measured configurations on one host, not deployment-wide SLOs.
 
