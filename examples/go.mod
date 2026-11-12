@@ -3,9 +3,9 @@ module github.com/goforj/feature/examples
 go 1.26.0
 
 require (
-	github.com/goforj/feature v0.0.0-20261112111010-76d41d886154
-	github.com/goforj/feature/driver/launchdarklyfeature v0.0.0-20261112111010-76d41d886154
-	github.com/goforj/feature/driver/openfeaturefeature v0.0.0-20261112111010-76d41d886154
+	github.com/goforj/feature v0.0.0-20261112220916-2fe3a029014f
+	github.com/goforj/feature/driver/launchdarklyfeature v0.0.0-20261112220916-2fe3a029014f
+	github.com/goforj/feature/driver/openfeaturefeature v0.0.0-20261112220916-2fe3a029014f
 	github.com/launchdarkly/go-server-sdk/v7 v7.22.0
 	github.com/open-feature/go-sdk v1.20.0
 )
