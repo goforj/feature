@@ -1,0 +1,43 @@
+=== RUN   TestRealLaunchDarklyThroughOpenFeature
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+    provider_test.go:63: real SDK + OpenFeature: targeting and live update passed
+    provider_test.go:72: same client and subject observe a changed decision after source update
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+--- PASS: TestRealLaunchDarklyThroughOpenFeature (0.00s)
+=== RUN   TestErrorsAndCancellation
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+    provider_test.go:108: missing/type/context/cancellation errors and borrowed-client ownership passed
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+--- PASS: TestErrorsAndCancellation (0.00s)
+=== RUN   TestIndependentAPIs
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+    provider_test.go:139: two isolated API instances preserve independent state under concurrent evaluation
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+--- PASS: TestIndependentAPIs (0.00s)
+=== RUN   TestDisabledValueAndTypedContexts
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+    provider_test.go:159: disabled reason can accompany a true off-variation; do not normalize it to false
+    provider_test.go:175: multi-context mapping passed; this pinned provider does not expose tracking or provider events
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+--- PASS: TestDisabledValueAndTypedContexts (0.00s)
+=== RUN   TestTypedAttributeRulesAndConfigCatSnapshots
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Starting LaunchDarkly client 7.22.0
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Waiting up to 1000 milliseconds for LaunchDarkly client to start...
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Initialized LaunchDarkly client
+    provider_test.go:215: typed attributes retain their types; ConfigCat typed flags and immutable snapshots passed
+[LaunchDarkly] 2026/11/11 21:27:37 INFO: Closing LaunchDarkly client
+--- PASS: TestTypedAttributeRulesAndConfigCatSnapshots (0.00s)
+PASS
+ok  	feature-provider-study	1.313s

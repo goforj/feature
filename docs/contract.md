@@ -105,4 +105,4 @@ Each process publishes atomically within itself. Multiple processes converge ind
 
 Jobs evaluate at execution unless the application persists an earlier decision. Feature flags do not replace authorization or billing entitlements. A stale snapshot cannot guarantee immediate emergency shutdown. Server-side rules and identities should remain private; exposing selected decisions to a browser requires application policy.
 
-This release candidate includes no hosted provider adapter, OpenFeature compliance claim, administration API, framework integration, experimentation analytics, or multivariate values.
+The current native implementation includes no hosted provider adapter, OpenFeature compliance claim, administration API, framework integration, experimentation analytics, or multivariate values. The [provider study](provider-study.md) proposes the next architecture; it does not change the current runtime contract.

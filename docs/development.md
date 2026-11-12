@@ -6,7 +6,7 @@ This checkout contains one module, github.com/goforj/feature, with a Go 1.24 min
 
 The initial workflow is a local boolean decision with exact targeting, stable percentages, complete immutable snapshots, and explicit live refresh. Memory and regular-file JSON sources are the complete initial source catalog. No framework packages or deployment services are required.
 
-The native evaluator was selected to keep this deliberately bounded contract free of runtime dependencies. The external comparison examined published GO Feature Flag configuration and rollout documentation, not a source audit or a performance benchmark. Its retrievers, richer targeting, analytics, and persisted configuration are valuable when those broader requirements apply. This library does not claim that they are absent or inferior. No claim of hosted-provider interchangeability or OpenFeature conformance is made.
+The first implementation uses a native evaluator with no external runtime dependencies. The subsequent [provider study](provider-study.md) examines multiple SDKs, inspects their source, and executes pinned local SDK probes. It proposes a provider-neutral core plus optional direct LaunchDarkly and OpenFeature drivers. Those drivers are not implemented yet. No claim of hosted-provider interchangeability or OpenFeature conformance is made.
 
 The implementation follows the GoForj feature-flags proposal, with Open replacing the proposed I/O-performing New constructor. Source constructors remain explicit and do not perform filesystem I/O. Framework integration, hosted sources, write APIs, release publication, and external service setup remain outside this local library build.
 

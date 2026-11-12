@@ -1,0 +1,216 @@
+package study
+
+import (
+	"context"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/configcat/go-sdk/v9"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk/v7"
+	"github.com/launchdarkly/go-server-sdk/v7/ldcomponents"
+	"github.com/launchdarkly/go-server-sdk/v7/testhelpers/ldtestdata"
+	"github.com/open-feature/go-sdk-contrib/providers/launchdarkly/pkg"
+	"github.com/open-feature/go-sdk/openfeature"
+	"github.com/open-feature/go-sdk/openfeature/isolated"
+)
+
+// nativeClient constructs the real vendor SDK with a live-updatable local test data source.
+func nativeClient(t *testing.T) (*ldclient.LDClient, *ldtestdata.TestDataSource) {
+	t.Helper()
+	data := ldtestdata.DataSource()
+	data.Update(data.Flag("checkout-v2").BooleanFlag().VariationForAll(false))
+	client, err := ldclient.MakeCustomClient("offline-study-placeholder", ldclient.Config{DataSource: data, Events: ldcomponents.NoEvents()}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return client, data
+}
+
+// TestRealLaunchDarklyThroughOpenFeature proves a vendor SDK can remain authoritative behind an isolated API.
+func TestRealLaunchDarklyThroughOpenFeature(t *testing.T) {
+	ctx := context.Background()
+	native, data := nativeClient(t)
+	api := isolated.NewAPI()
+	t.Cleanup(func() {
+		if err := api.Shutdown(ctx); err != nil {
+			t.Error(err)
+		}
+	})
+	provider := launchdarkly.NewProvider(native)
+	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+		t.Fatal(err)
+	}
+	client := api.NewClient()
+	subject := openfeature.NewEvaluationContext("tenant:acme", map[string]any{"kind": "organization", "paid": true, "seats": int64(12)})
+	if value, err := client.BooleanValue(ctx, "checkout-v2", true, subject); err != nil || value {
+		t.Fatal(value, err)
+	}
+	data.Update(data.Flag("checkout-v2").BooleanFlag().VariationForKey("organization", "tenant:acme", true).FallthroughVariation(false))
+	if value, err := client.BooleanValue(ctx, "checkout-v2", false, subject); err != nil || !value {
+		t.Fatal(value, err)
+	}
+	if value, err := native.BoolVariation("checkout-v2", ldcontext.NewBuilder("tenant:acme").Kind("organization").Build(), false); err != nil || !value {
+		t.Fatal(value, err)
+	}
+	t.Log("real SDK + OpenFeature: targeting and live update passed")
+
+	// Evaluations on either side of one update see different values; the API exposes no frozen rules view.
+	before := client.Boolean(ctx, "checkout-v2", false, subject)
+	data.Update(data.Flag("checkout-v2").BooleanFlag().VariationForAll(false))
+	after := client.Boolean(ctx, "checkout-v2", true, subject)
+	if !before || after {
+		t.Fatal(before, after)
+	}
+	t.Log("same client and subject observe a changed decision after source update")
+}
+
+// TestErrorsAndCancellation verifies provider results preserve failures instead of treating fallback values as successes.
+func TestErrorsAndCancellation(t *testing.T) {
+	ctx := context.Background()
+	native, _ := nativeClient(t)
+	api := isolated.NewAPI()
+	t.Cleanup(func() { _ = api.Shutdown(ctx) })
+	if err := api.SetProviderAndWait(ctx, launchdarkly.NewProvider(native)); err != nil {
+		t.Fatal(err)
+	}
+	client := api.NewClient()
+	subject := openfeature.NewEvaluationContext("tenant:acme", nil)
+	missing, err := client.BooleanValueDetails(ctx, "missing", true, subject)
+	if err == nil || !missing.Value || missing.ResolutionDetail.ErrorCode != openfeature.FlagNotFoundCode {
+		t.Fatal(missing, err)
+	}
+	_, err = client.StringValue(ctx, "checkout-v2", "fallback", subject)
+	if err == nil {
+		t.Fatal("type mismatch suppressed")
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if value, err := client.BooleanValue(canceled, "checkout-v2", true, subject); err == nil || !value {
+		t.Fatal(value, err)
+	}
+	if value, err := client.BooleanValue(ctx, "checkout-v2", true, openfeature.EvaluationContext{}); err == nil || !value {
+		t.Fatal(value, err)
+	}
+	if err := api.Shutdown(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := native.BoolVariation("checkout-v2", ldcontext.New("still-owned"), false); err != nil {
+		t.Fatalf("borrowed client was closed: %v", err)
+	}
+	t.Log("missing/type/context/cancellation errors and borrowed-client ownership passed")
+}
+
+// TestIndependentAPIs verifies independent provider state without replacing a process-global default.
+func TestIndependentAPIs(t *testing.T) {
+	ctx := context.Background()
+	a, ad := nativeClient(t)
+	b, bd := nativeClient(t)
+	ad.Update(ad.Flag("checkout-v2").BooleanFlag().VariationForAll(true))
+	bd.Update(bd.Flag("checkout-v2").BooleanFlag().VariationForAll(false))
+	aa, ba := isolated.NewAPI(), isolated.NewAPI()
+	t.Cleanup(func() { _ = aa.Shutdown(ctx); _ = ba.Shutdown(ctx) })
+	if err := aa.SetProviderAndWait(ctx, launchdarkly.NewProvider(a)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ba.SetProviderAndWait(ctx, launchdarkly.NewProvider(b)); err != nil {
+		t.Fatal(err)
+	}
+	ac, bc := aa.NewClient(), ba.NewClient()
+	subject := openfeature.NewEvaluationContext("tenant:acme", nil)
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if !ac.Boolean(ctx, "checkout-v2", false, subject) || bc.Boolean(ctx, "checkout-v2", true, subject) {
+				t.Error("isolated API state leaked")
+			}
+		}()
+	}
+	wg.Wait()
+	t.Log("two isolated API instances preserve independent state under concurrent evaluation")
+}
+
+// TestDisabledValueAndTypedContexts proves generic wrappers must preserve provider semantics.
+func TestDisabledValueAndTypedContexts(t *testing.T) {
+	ctx := context.Background()
+	native, data := nativeClient(t)
+	api := isolated.NewAPI()
+	t.Cleanup(func() { _ = api.Shutdown(ctx) })
+	provider := launchdarkly.NewProvider(native)
+	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+		t.Fatal(err)
+	}
+	client := api.NewClient()
+	subject := openfeature.NewEvaluationContext("tenant:acme", map[string]any{"kind": "organization"})
+	data.Update(data.Flag("off-true").BooleanFlag().OffVariation(true).On(false))
+	detail, err := client.BooleanValueDetails(ctx, "off-true", false, subject)
+	if err != nil || !detail.Value || detail.ResolutionDetail.Reason != openfeature.DisabledReason {
+		t.Fatal(detail, err)
+	}
+	t.Log("disabled reason can accompany a true off-variation; do not normalize it to false")
+	multi := openfeature.NewEvaluationContext("reserved-top-level", map[string]any{
+		"kind":         "multi",
+		"organization": map[string]any{"key": "tenant:acme", "paid": true, "seats": int64(12)},
+		"user":         map[string]any{"key": "user:7", "anonymous": false},
+	})
+	data.Update(data.Flag("checkout-v2").BooleanFlag().VariationForKey("organization", "tenant:acme", true).FallthroughVariation(false))
+	if value, err := client.BooleanValue(ctx, "checkout-v2", false, multi); err != nil || !value {
+		t.Fatal(value, err)
+	}
+	if _, ok := any(provider).(openfeature.Tracker); ok {
+		t.Fatal("review tracking capability evidence; provider contract changed")
+	}
+	if _, ok := any(provider).(openfeature.EventHandler); ok {
+		t.Fatal("review event capability evidence; provider contract changed")
+	}
+	t.Log("multi-context mapping passed; this pinned provider does not expose tracking or provider events")
+}
+
+// TestTypedAttributeRulesAndConfigCatSnapshots exercises semantics omitted by string-only subjects.
+func TestTypedAttributeRulesAndConfigCatSnapshots(t *testing.T) {
+	ctx := context.Background()
+	native, data := nativeClient(t)
+	api := isolated.NewAPI()
+	t.Cleanup(func() { _ = api.Shutdown(ctx) })
+	if err := api.SetProviderAndWait(ctx, launchdarkly.NewProvider(native)); err != nil {
+		t.Fatal(err)
+	}
+	data.Update(data.Flag("typed-targeting").BooleanFlag().IfMatchContext("organization", "paid", ldvalue.Bool(true)).AndMatchContext("organization", "seats", ldvalue.Int(12)).ThenReturn(true).FallthroughVariation(false))
+	client := api.NewClient()
+	subject := openfeature.NewEvaluationContext("tenant:acme", map[string]any{"kind": "organization", "paid": true, "seats": int64(12)})
+	if value, err := client.BooleanValue(ctx, "typed-targeting", false, subject); err != nil || !value {
+		t.Fatal(value, err)
+	}
+	wrongTypes := openfeature.NewEvaluationContext("tenant:acme", map[string]any{"kind": "organization", "paid": "true", "seats": "12"})
+	if value, err := client.BooleanValue(ctx, "typed-targeting", true, wrongTypes); err != nil || value {
+		t.Fatal(value, err)
+	}
+	values := map[string]interface{}{"checkout-v2": true}
+	old, err := configcat.NewSnapshot(nil, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values["checkout-v2"] = false
+	next, err := configcat.NewSnapshot(nil, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	flag := configcat.Bool("checkout-v2", false)
+	if !flag.Get(old) || flag.Get(next) {
+		t.Fatal("ConfigCat snapshot consistency failed")
+	}
+	missing := configcat.Bool("missing", true)
+	if !missing.Get(old) {
+		t.Fatal("typed descriptor lost its declared fallback")
+	}
+	t.Log("typed attributes retain their types; ConfigCat typed flags and immutable snapshots passed")
+}

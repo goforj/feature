@@ -300,4 +300,4 @@ make check-generated
 
 See [development](docs/development.md) for module ownership, validation commands, and publication status. Framework integration, hosted providers, and administration interfaces are separate from this standalone library.
 
-The [remaining-work checklist](docs/roadmap.md) tracks library review, real-App validation, GoForj integration, and release preparation.
+The [remaining-work checklist](docs/roadmap.md) tracks library review, provider drivers, real-App validation, GoForj integration, and release preparation. The [provider study](docs/provider-study.md) records the proposed direction and tested SDK behavior; external drivers are not implemented yet.
