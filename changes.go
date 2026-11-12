@@ -23,6 +23,8 @@ type Change struct {
 
 // Notifier submits native change notifications without owning a refresh loop.
 // Failures are recorded separately from successful source publication.
+// Notify runs synchronously and must not reenter the owning client's Refresh or Run;
+// it may inspect Status. Use a queue when a callback needs to trigger later refreshes.
 type Notifier interface {
 	Notify(context.Context, Change) error
 }
@@ -50,6 +52,7 @@ func WithClock(clock func() time.Time) ClientOption {
 }
 
 // WithNotifier attaches a bounded, application-owned native change destination.
+// Callbacks must not reenter this client's Refresh or Run; they may inspect Status.
 func WithNotifier(notifier Notifier) ClientOption {
 	return func(config *clientConfig) { config.notifier = notifier }
 }
@@ -100,8 +103,8 @@ func changedKeys(before, after *compiled) []string {
 			continue
 		}
 		previous, present := before.document.Flags[key]
-		old, _ := json.Marshal(previous)
-		next, _ := json.Marshal(flag)
+		old, _ := json.Marshal(encodedFlag(previous))
+		next, _ := json.Marshal(encodedFlag(flag))
 		if !present || !bytes.Equal(old, next) {
 			keys[key] = true
 		}

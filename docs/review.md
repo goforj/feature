@@ -87,7 +87,25 @@ This candidate passed 259 unit cases, all 12 canonical programs, 1729/1729 runti
 
 Linux CI exposed an integration-fixture readiness race: independently published LaunchDarkly flags were not necessarily all visible when the first string flag arrived. Typed fixture setup now waits for every published value, including the update baseline, before running conformance assertions. Evaluation assertions remain immediate after this bounded readiness check. This correction changes test synchronization, not driver behavior.
 
-## Documentation and distribution
+## Independent review of the expanded library
+
+Four independent reviews examined consumer API and native models, SDK driver behavior, security and resource boundaries, and behavioral test strength. Findings were reproduced before fixes, and the numeric fixes received a second independent review.
+
+JSON integer tokens outside int64 could silently become rounded floats. Declared-float conversion also bypassed integer precision checks. Validation now rejects lossy integer conversions, while Encode preserves floating-point syntax throughout nested values, variants, and conditions. Aggregate limits account for the actual representation. Regression tests preserve large finite float round trips, exact integer boundaries, nested values, and oversized-document rejection.
+
+Ordinary JSON serialization could give distinct integer and float conditions identical revision bytes. A reproduced case changed a decision without changing its revision or notifying subscribers. Schema 2 canonical encoding and per-flag change comparison now preserve numeric distinctions. Variant contradiction checks compare numbers exactly. Existing schema 1 canonical bytes and rollout vectors remain frozen. Float-containing schema 2 documents receive corrected revisions, which can cause one configuration-change notification after an upgrade.
+
+LaunchDarkly string and numeric reads now prefer native typed SDK methods, so SDK type errors reach hooks and analytics before portable result handling. Existing borrowed clients exposing only JSON evaluation remain supported. Hook regressions use the actual SDK. Additional portable object, precision, and size checks still occur after native SDK evaluation and are documented as such.
+
+A mutation changing a weighted split boundary from >= to > passed the earlier tests. New golden vectors reject that mutation at exact boundaries and cover unequal three-way allocation, zero-weight variants, and stable membership after refresh.
+
+The OpenFeature SDK can shut down a provider before its asynchronous initialization returns after cancellation. Its public API offers no join handle. Detaching initialization would suppress caller cancellation and deadlines; wrapping providers would bypass native binding protections. This review preserves those SDK semantics, documents the stateful-provider synchronization requirement in Open's GoDoc and the contract, and records upstream follow-up. Applications can initialize and manage such a provider themselves and borrow its SDK client through New. This limitation remains unresolved for arbitrary providers lacking lifecycle synchronization.
+
+Security review found no actionable issue inside the documented source and collaborator boundaries. Notifier reentrancy restrictions are now visible directly in GoDoc as well as the contract.
+
+The final local gate passed 293 unit cases, all 12 programs, and 1808/1808 runtime statements. All 160 separate container/SDK integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Decoder fuzzing completed 5,533,691 executions without a failure. The integration gate remains independent of exact unit coverage.
+
+## Distribution inventory
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.
 

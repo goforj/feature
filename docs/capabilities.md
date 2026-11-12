@@ -7,7 +7,7 @@ The application API uses one injected evaluator and owned request targeting. Ena
 | Boolean values | Schema 1 and 2 | Official SDK | Configured provider |
 | String, integer, float, object values | Schema 2 | Official SDK | Configured provider |
 | Integer precision | Exact int64 | Exact integers through 2^53-1; reject fractions and larger values | Provider-specific; native provider preserves int64 |
-| Structured values | Owned JSON maps and arrays, bounded to 64 KiB | Same portable bounds | Same portable bounds |
+| Structured values | Owned JSON maps and arrays, bounded to 64 KiB | Same portable bounds; numbers retain SDK float64 semantics | Same portable bounds; provider numeric semantics |
 | Typed targeting | Equality, membership, numeric comparison, strings, RE2, presence, and JSON Pointer paths | LaunchDarkly rules | Provider rules |
 | Named variants and weighted allocation | Explicit ordered allocations totaling 10000 basis points | LaunchDarkly variations | Provider variations |
 | Scheduled and progressive rollouts | Rule windows and time-based percentage interpolation | Backend policy | Provider/backend policy |
@@ -21,6 +21,8 @@ The application API uses one injected evaluator and owned request targeting. Ena
 The real-service suite tests native, the native OpenFeature provider, direct LaunchDarkly, the community OpenFeature LaunchDarkly provider, and GO Feature Flag in remote and in-process modes. The versions in integration/versions.json define the executed scope. Supporting the OpenFeature API boundary does not certify every provider or establish complete specification conformance.
 
 ## Tracking differences
+
+LaunchDarkly uses native string and numeric evaluation methods, so their SDK type errors reach hooks and analytics. Additional portable integer precision, object-shape, and size checks happen afterward. SDK hooks and analytics reflect the native result even when a later portable check returns the caller fallback. Borrowed clients exposing only JSON evaluation retain that path and its native JSON semantics.
 
 SupportsTracking reports configured support where it is known. Native clients need an event sink. Owned OpenFeature adapters reject a provider known to lack Tracker with ErrUnsupported. A borrowed SDK client cannot expose every provider capability, so it can report SDK submission support without proving remote delivery.
 
@@ -43,6 +45,8 @@ Observers, custom sinks, and notifiers are synchronous. HTTP delivery is bounded
 Subscriptions have a one-message queue and coalesce slow consumers to the latest revision. Keys is nil after coalescing, meaning a consumer should refresh its whole inventory. Native provider forwarding is bounded, preserves SDK health transitions, and stops at provider shutdown without closing the borrowed engine.
 
 ## API and persisted data
+
+OpenFeature startup cancellation follows the pinned SDK's lifecycle behavior: shutdown can overlap provider initialization. Stateful providers must synchronize those methods. For a provider without that guarantee, manage its initialization and shutdown yourself and use the borrowed-client constructor. The adapter preserves provider binding checks and caller cancellation rather than wrapping providers or detaching their initialization contexts.
 
 This repository is unreleased and its API is fluid. Flag.Default and Rule.Value accept supported values rather than bool alone. Existing keyed boolean definitions and boolean evaluation methods retain their behavior; code reading these fields as bool must select the appropriate typed value. Encode validates and persists normalized Go definitions, including boolean zero values and numeric type annotations. Named-variant actions normalize away redundant inline values so loading, changing a variant name, and re-encoding remains predictable.
 

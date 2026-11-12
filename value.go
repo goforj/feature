@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"math/big"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -94,7 +96,11 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 		if *budget > MaxValueBytes || !json.Valid([]byte(value)) {
 			return nil, ErrInvalidValue
 		}
-		if integer, err := strconv.ParseInt(string(value), 10, 64); err == nil {
+		if !strings.ContainsAny(string(value), ".eE") {
+			integer, err := strconv.ParseInt(string(value), 10, 64)
+			if err != nil {
+				return nil, ErrInvalidValue
+			}
 			return integer, nil
 		}
 		if number, err := strconv.ParseFloat(string(value), 64); err == nil {
@@ -203,14 +209,7 @@ func valueType(value any) ValueType {
 // CopyValue owns a value of the requested type and rejects lossy coercion.
 func CopyValue(value any, kind ValueType) (any, error) {
 	if number, ok := value.(json.Number); ok && kind == TypeFloat {
-		if len(number) > MaxValueBytes || !json.Valid([]byte(number)) {
-			return nil, ErrInvalidValue
-		}
-		parsed, err := number.Float64()
-		if err != nil {
-			return nil, ErrInvalidValue
-		}
-		value = parsed
+		return copyJSONFloat(number)
 	}
 	owned, err := CloneValue(value)
 	if err != nil {
@@ -218,7 +217,7 @@ func CopyValue(value any, kind ValueType) (any, error) {
 	}
 	if kind == TypeFloat {
 		if integer, ok := owned.(int64); ok {
-			if integer > 1<<53 || integer < -(1<<53) {
+			if comparison, _ := numericComparison(integer, float64(integer)); comparison != 0 {
 				return nil, ErrInvalidValue
 			}
 			owned = float64(integer)
@@ -228,4 +227,25 @@ func CopyValue(value any, kind ValueType) (any, error) {
 		return nil, ErrTypeMismatch
 	}
 	return owned, nil
+}
+
+// copyJSONFloat preserves declared floats while rejecting rounded integer tokens.
+func copyJSONFloat(number json.Number) (any, error) {
+	if len(number) > MaxValueBytes || !json.Valid([]byte(number)) {
+		return nil, ErrInvalidValue
+	}
+	parsed, err := number.Float64()
+	if err != nil {
+		return nil, ErrInvalidValue
+	}
+	if !strings.ContainsAny(string(number), ".eE") {
+		// External float documents can use integer tokens beyond int64, so compare at full precision.
+		var integer big.Int
+		integer.SetString(string(number), 10)
+		converted, _ := new(big.Float).SetFloat64(parsed).Int(nil)
+		if converted.Cmp(&integer) != 0 {
+			return nil, ErrInvalidValue
+		}
+	}
+	return cloneFloat(parsed)
 }

@@ -331,7 +331,7 @@ NewHTTPSource captures explicit request policy without I/O or background workers
 
 NewHTTPExporter captures bounded delivery policy for analytics and change webhooks.
 
-WithNotifier attaches a bounded, application-owned native change destination.
+WithNotifier attaches a bounded, application-owned native change destination. Callbacks must not reenter this client's Refresh or Run; they may inspect Status.
 
 ```go
 source, err := feature.NewHTTPSource(feature.HTTPConfig{URL: server.URL})
@@ -400,7 +400,7 @@ fmt.Println("Owned checkout:", checkout.Enabled(ctx, "checkout-v2"))
 
 ### openfeaturefeature.Open
 
-Open owns an isolated API, waits for provider initialization, and starts no global binding. The SDK's isolated API is experimental and contained behind this optional module.
+Open owns an isolated API, waits for provider initialization, and starts no global binding. The SDK's isolated API is experimental and contained behind this optional module. The SDK can invoke shutdown before initialization returns when ctx is canceled. Stateful providers must synchronize those lifecycle methods. For providers without that guarantee, initialize and manage the SDK yourself and borrow it through New.
 
 ```go
 owned, err := openfeaturefeature.Open(ctx, provider)

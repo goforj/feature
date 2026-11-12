@@ -248,7 +248,7 @@ func safeError(err error) error {
 }
 
 // Resolve adapts the native engine without changing its document or snapshot contracts.
-// Native rules match only string attributes; typed non-string attributes do not match.
+// Legacy attribute rules match strings; schema 2 conditions match typed values.
 // Kind does not alter native identity hashing or its explicit key convention.
 func (c *Client) Resolve(ctx context.Context, key string, fallback bool, target Target) Decision {
 	decision := c.Snapshot().Resolve(ctx, key, fallback, target)

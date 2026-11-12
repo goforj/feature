@@ -1,13 +1,12 @@
 package feature
 
 import (
-	"bytes"
 	"encoding/json"
 	"sort"
 )
 
 // valueBytes accounts for bounded encoded values before copying a complete document.
-func valueBytes(value any) int { data, _ := json.Marshal(value); return len(data) }
+func valueBytes(value any) int { data, _ := json.Marshal(encodedValue(value)); return len(data) }
 
 // flagType preserves schema 1's boolean contract while typed definitions declare their type.
 func flagType(flag Flag) ValueType {
@@ -29,9 +28,7 @@ func selectedValue(value any, name string, flag Flag) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			left, _ := json.Marshal(normalized)
-			right, _ := json.Marshal(selected)
-			if !bytes.Equal(left, right) {
+			if !equalValue(normalized, selected) {
 				return nil, ErrInvalidDocument
 			}
 		}
@@ -62,14 +59,15 @@ func normalizeFlag(flag Flag, schema int) (Flag, int, error) {
 	if value == nil {
 		value = false
 	}
-	owned, err := CloneValue(value)
-	if err != nil {
-		return Flag{}, 0, err
-	}
+	var err error
 	kind := flag.Type
 	if schema == SchemaVersion {
 		kind = TypeBoolean
 	} else if kind == "" {
+		owned, err := CloneValue(value)
+		if err != nil {
+			return Flag{}, 0, err
+		}
 		kind = valueType(owned)
 	}
 	result := flag

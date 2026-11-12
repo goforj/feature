@@ -42,6 +42,9 @@ func New(client Client) *Driver { return &Driver{client: client} }
 
 // Open owns an isolated API, waits for provider initialization, and starts no global binding.
 // The SDK's isolated API is experimental and contained behind this optional module.
+// The SDK can invoke shutdown before initialization returns when ctx is canceled.
+// Stateful providers must synchronize those lifecycle methods. For providers without
+// that guarantee, initialize and manage the SDK yourself and borrow it through New.
 func Open(ctx context.Context, provider openfeature.FeatureProvider) (*Driver, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

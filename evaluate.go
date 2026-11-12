@@ -16,8 +16,8 @@ const (
 	ReasonDefault Reason = "default"
 	// ReasonRule indicates that an ordered targeting rule matched.
 	ReasonRule Reason = "rule"
-	// ReasonDisabled indicates a disabled flag; the native engine forces false.
-	// External drivers preserve the vendor's configured off-variation.
+	// ReasonDisabled indicates a disabled flag's configured off-value.
+	// Native schema 1 uses false; schema 2 and external drivers support explicit off-values.
 	ReasonDisabled Reason = "disabled"
 	// ReasonMissing indicates that the flag is absent from the captured snapshot.
 	ReasonMissing Reason = "missing"
@@ -36,7 +36,7 @@ type Decision struct {
 	Value    bool
 	Reason   Reason
 	Revision string
-	// Variant identifies a vendor variation when the driver can supply it.
+	// Variant identifies a named native variant or a vendor variation when available.
 	Variant string
 	Err     error
 }

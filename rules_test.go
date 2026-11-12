@@ -337,3 +337,53 @@ func TestAdvancedDefinitionValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestSplitGoldenAssignments freezes ordered allocation boundaries through the native application API.
+func TestSplitGoldenAssignments(t *testing.T) {
+	cases := []struct {
+		name        string
+		allocations []Allocation
+	}{
+		{"unequal-three-way", []Allocation{{"first", 1000}, {"second", 2500}, {"third", 6500}}},
+		{"zero-width-allocations", []Allocation{{"leading", 0}, {"first", 1000}, {"middle", 0}, {"second", 2500}, {"third", 6500}, {"trailing", 0}}},
+	}
+	// These identity assignments are fixed vectors for flag "split" and salt "v1".
+	identities := []struct {
+		key, variant string
+		bucket       int
+	}{
+		{"125", "first", 0},
+		{"10122", "first", 999},
+		{"1089", "second", 1000},
+		{"8582", "second", 3499},
+		{"2485", "third", 3500},
+		{"14727", "third", 5000},
+		{"3225", "third", 9999},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			doc := Document{Schema: 2, Flags: map[string]Flag{"split": {
+				Variants:       map[string]any{"leading": "leading-value", "first": "first-value", "middle": "middle-value", "second": "second-value", "third": "third-value", "trailing": "trailing-value"},
+				DefaultVariant: "leading",
+				Rules:          []Rule{{Split: &Split{Salt: "v1", Allocations: tc.allocations}}},
+			}}}
+			engine := sourceClient(t, mustMemorySource(t, doc))
+			for _, identity := range identities {
+				t.Run(fmt.Sprintf("bucket-%d", identity.bucket), func(t *testing.T) {
+					scope := New(engine).For(Target{Key: identity.key})
+					before := scope.String(ctx, "split", "fallback")
+					if before.Err != nil || before.Reason != ReasonSplit || before.Variant != identity.variant || before.Value != identity.variant+"-value" {
+						t.Fatalf("identity %s: got %+v, want variant %s", identity.key, before, identity.variant)
+					}
+					if err := engine.Refresh(ctx); err != nil {
+						t.Fatal(err)
+					}
+					if after := scope.String(ctx, "split", "fallback"); after != before {
+						t.Fatalf("stable identity changed after refresh: before %+v, after %+v", before, after)
+					}
+				})
+			}
+		})
+	}
+}

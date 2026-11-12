@@ -3,7 +3,6 @@ package feature
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"time"
 	"unicode/utf8"
@@ -125,7 +124,7 @@ func compile(doc Document) (*compiled, error) {
 		}
 		owned.Flags[key] = normalized
 	}
-	data, _ := json.Marshal(owned)
+	data := encodeDocument(owned)
 	hash := sha256.Sum256(data)
 	return &compiled{document: owned, revision: hex.EncodeToString(hash[:])}, nil
 }

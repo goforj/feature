@@ -31,6 +31,8 @@ The [provider study](provider-study.md) informed a provider-neutral client with 
 
 ## Library review before freezing v1
 
+- [ ] Revisit OpenFeature cancellation cleanup ordering when its SDK exposes joinable initialization or shutdown. Until then, stateful providers must synchronize their lifecycle methods, or applications must manage SDK startup and borrow an initialized client.
+
 - [x] Review the consumer API separately from its implementation: construction, source ownership, fallbacks, cancellation, and request/job snapshot use.
 - [x] Review correctness and resources: concurrent publication, failed refreshes, stale state, JSON validation, aggregate limits, and error redaction.
 - [x] Review the native engine and external drivers against the provider-neutral product boundary, including whether the facade improves on using an SDK directly.

@@ -170,6 +170,8 @@ func TestReadFileFailures(t *testing.T) {
 
 // FuzzDecode checks untrusted documents cannot panic or escape the validation contract.
 func FuzzDecode(f *testing.F) {
+	f.Add([]byte(`{"schema":2,"flags":{"number":{"type":"float","default":9.223372036854776e18},"config":{"default":{"values":[1e20,-1e20,9223372036854775807]}}}}`))
+	f.Add([]byte(`{"schema":2,"flags":{"config":{"default":{"id":9223372036854775809}}}}`))
 	f.Add([]byte(`{"schema":2,"flags":{"theme":{"variants":{"a":"blue","b":"green"},"default_variant":"a","rules":[{"conditions":[{"attribute":"seats","op":"ge","value":10}],"variant":"b"}]}}}`))
 	f.Add([]byte(`{"schema":2,"flags":{"theme":{"variants":{"a":"blue","b":"green"},"default_variant":"a","rules":[{"split":{"salt":"v1","allocations":[{"variant":"a","basis_points":5000},{"variant":"b","basis_points":5000}]}}]}}}`))
 	f.Add([]byte(`{"schema":2,"flags":{"launch":{"default":false,"rules":[{"rollout":{"salt":"v1","progressive":{"start":"2026-01-01T00:00:00Z","end":"2026-01-02T00:00:00Z","from":0,"to":10000}},"value":true}]}}}`))
@@ -189,7 +191,7 @@ func FuzzDecode(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		canonical, err := json.Marshal(doc)
+		canonical, err := Encode(doc)
 		if err != nil {
 			t.Fatal(err)
 		}
