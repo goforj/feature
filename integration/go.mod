@@ -3,9 +3,9 @@ module github.com/goforj/feature/integration
 go 1.26.0
 
 require (
-	github.com/goforj/feature v0.0.0-20261112095403-815ca4425982
-	github.com/goforj/feature/driver/launchdarklyfeature v0.0.0-20261112095403-815ca4425982
-	github.com/goforj/feature/driver/openfeaturefeature v0.0.0-20261112095403-815ca4425982
+	github.com/goforj/feature v0.0.0-20261112111010-76d41d886154
+	github.com/goforj/feature/driver/launchdarklyfeature v0.0.0-20261112111010-76d41d886154
+	github.com/goforj/feature/driver/openfeaturefeature v0.0.0-20261112111010-76d41d886154
 	github.com/launchdarkly/go-sdk-common/v3 v3.6.0
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.2.0
 	github.com/launchdarkly/go-server-sdk/v7 v7.22.0
