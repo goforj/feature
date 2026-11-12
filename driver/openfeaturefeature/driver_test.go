@@ -279,6 +279,43 @@ type lifecycleProvider struct {
 	initErr error
 }
 
+// failingShutdownProvider exercises SDK cleanup error wrapping through the real isolated API.
+type failingShutdownProvider struct {
+	*memprovider.InMemoryProvider
+	openfeature.NoopStateHandler
+	stops atomic.Int32
+}
+
+var _ openfeature.ContextAwareStateHandler = (*failingShutdownProvider)(nil)
+
+// InitWithContext makes the provider ready without an external service.
+func (p *failingShutdownProvider) InitWithContext(context.Context, openfeature.EvaluationContext) error {
+	return nil
+}
+
+// ShutdownWithContext lets the native API wrap an actual provider cleanup failure.
+func (p *failingShutdownProvider) ShutdownWithContext(context.Context) error {
+	p.stops.Add(1)
+	return errors.New("private provider cleanup diagnostic")
+}
+
+// TestRealSDKCloseFailurePreservesOwnership verifies error classification and idempotency beyond the API stub.
+func TestRealSDKCloseFailurePreservesOwnership(t *testing.T) {
+	provider := &failingShutdownProvider{InMemoryProvider: memprovider.NewInMemoryProvider(map[string]memprovider.InMemoryFlag{})}
+	driver, err := Open(context.Background(), provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := driver.Close(); err != feature.ErrUnavailable {
+			t.Fatal("SDK cleanup failure lost or exposed", err)
+		}
+	}
+	if provider.stops.Load() != 1 {
+		t.Fatal("provider cleanup repeated", provider.stops.Load())
+	}
+}
+
 // Init implements the provider's legacy lifecycle contract for SDK compatibility.
 func (p *lifecycleProvider) Init(openfeature.EvaluationContext) error { return p.initErr }
 

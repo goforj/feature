@@ -16,7 +16,7 @@ Both the direct LaunchDarkly driver and OpenFeature LaunchDarkly provider run th
 
 ## Clean Git consumers
 
-Independent consumers installed source commit `136744426350e7fc5d05114d904237ff1afd9a5e` using actual Go pseudo-versions outside the checkout, with `GOWORK=off` and no replacements. Subsequent example and integration additions leave runtime APIs unchanged. Each consumer performed a successful boolean evaluation with race detection:
+Independent consumers installed reviewed source commit `02b431481e32c41e04d18b51ecc88c0657785eae` using actual Go pseudo-versions outside the checkout, with `GOWORK=off` and no replacements. Each consumer performed a successful boolean evaluation with race detection. OpenFeature and combined consumers also verified that an actual SDK provider cleanup error survives repeated Close calls:
 
 | Consumer | Executed toolchain | Selected native root |
 | :--- | :--- | :--- |
