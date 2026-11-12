@@ -26,6 +26,7 @@ type contractFixture struct {
 	features *feature.Features
 	prefix   string
 	change   func(bool)
+	remove   func()
 }
 
 // TestDriverConformance runs identical portable cases against native, vendor, and service-backed engines.
@@ -57,14 +58,21 @@ func newContractFixture(t *testing.T, name string) contractFixture {
 			t.Fatal(err)
 		}
 		fixture.features = feature.New(engine)
-		fixture.change = func(value bool) {
-			document.Flags[prefix+"update"] = feature.Flag{Default: value}
+		publish := func() {
 			if err := source.Replace(document); err != nil {
 				t.Fatal(err)
 			}
 			if err := engine.Refresh(ctx); err != nil {
 				t.Fatal(err)
 			}
+		}
+		fixture.change = func(value bool) {
+			document.Flags[prefix+"update"] = feature.Flag{Default: value}
+			publish()
+		}
+		fixture.remove = func() {
+			delete(document.Flags, prefix+"update")
+			publish()
 		}
 	case "launchdarkly", "openfeature-launchdarkly":
 		service := launchDarklyRelay(t)
@@ -109,6 +117,7 @@ func newContractFixture(t *testing.T, name string) contractFixture {
 		}
 		eventually(t, func() bool { return fixture.features.For(feature.Target{Key: "probe"}).Enabled(ctx, prefix+"true") })
 		fixture.change = func(value bool) { service.publish(relayFlag(prefix+"update", value).Build()) }
+		fixture.remove = func() { service.publish(relayFlag(prefix+"update", false).Deleted(true).Build()) }
 	default:
 		service := relay(t)
 		service.update(t, map[string]any{
@@ -136,6 +145,11 @@ func newContractFixture(t *testing.T, name string) contractFixture {
 		})
 		eventually(t, func() bool { return fixture.features.For(feature.Target{Key: "probe"}).Enabled(ctx, prefix+"true") })
 		fixture.change = func(value bool) { service.update(t, map[string]any{prefix + "update": remoteFlag(value, "")}) }
+		fixture.remove = func() {
+			service.mu.Lock()
+			delete(service.flags, prefix+"update")
+			service.mu.Unlock()
+		}
 	}
 	return fixture
 }
@@ -208,13 +222,41 @@ func runContract(t *testing.T, fixture contractFixture) {
 			group.Wait()
 		}},
 		{"live-update", func(t *testing.T) {
-			if scope.Enabled(ctx, fixture.prefix+"update") {
-				t.Fatal("initial state changed")
+			if d := scope.Evaluate(ctx, fixture.prefix+"update", true); d.Value || d.Err != nil {
+				t.Fatal("initial state changed", d)
 			}
 			fixture.change(true)
-			eventually(t, func() bool { return scope.Enabled(ctx, fixture.prefix+"update") })
+			eventually(t, func() bool {
+				d := scope.Evaluate(ctx, fixture.prefix+"update", false)
+				return d.Value && d.Err == nil
+			})
 			fixture.change(false)
-			eventually(t, func() bool { return !scope.Enabled(ctx, fixture.prefix+"update") })
+			eventually(t, func() bool {
+				d := scope.Evaluate(ctx, fixture.prefix+"update", true)
+				return !d.Value && d.Err == nil
+			})
+		}},
+		{"delete-and-recreate", func(t *testing.T) {
+			fixture.change(true)
+			eventually(t, func() bool {
+				d := scope.Evaluate(ctx, fixture.prefix+"update", false)
+				return d.Value && d.Err == nil
+			})
+			fixture.remove()
+			eventually(t, func() bool {
+				for _, fallback := range []bool{false, true} {
+					d := scope.Evaluate(ctx, fixture.prefix+"update", fallback)
+					if d.Value != fallback || d.Err != feature.ErrNotFound || d.Reason != feature.ReasonMissing {
+						return false
+					}
+				}
+				return true
+			})
+			fixture.change(false)
+			eventually(t, func() bool {
+				d := scope.Evaluate(ctx, fixture.prefix+"update", true)
+				return !d.Value && d.Err == nil
+			})
 		}},
 	}
 	for _, test := range cases {

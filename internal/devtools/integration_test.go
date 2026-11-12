@@ -2,6 +2,7 @@ package devtools
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -29,7 +30,7 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 		events = append(events, '\n')
 	}
 	for _, name := range []string{"native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
-		for _, scenario := range []string{"true", "false-is-success", "missing-false", "missing-true", "identity", "owned-target", "canceled", "concurrent", "live-update"} {
+		for _, scenario := range []string{"true", "false-is-success", "missing-false", "missing-true", "identity", "owned-target", "canceled", "concurrent", "live-update", "delete-and-recreate"} {
 			add("TestDriverConformance/" + name + "/" + scenario)
 		}
 	}
@@ -57,7 +58,15 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 			add("TestLaunchDarklyRelayContexts/" + adapter + "/" + scenario)
 		}
 	}
-	if count, err := integrationCases(events, true); count != 67 || err != nil {
+	if count, err := integrationCases(events, true); count != 72 || err != nil {
 		t.Fatal(count, err)
+	}
+	for _, name := range []string{"native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
+		t.Run(name+"-deletion-required", func(t *testing.T) {
+			missing := strings.Replace(string(events), "TestDriverConformance/"+name+"/delete-and-recreate", "unrelated-case", 1)
+			if _, err := integrationCases([]byte(missing), true); err == nil {
+				t.Fatal("flag deletion verification was optional")
+			}
+		})
 	}
 }

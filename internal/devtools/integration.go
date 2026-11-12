@@ -78,7 +78,7 @@ func integrationCases(events []byte, full bool) (int, error) {
 	}
 	if full {
 		for _, name := range []string{"native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
-			for _, scenario := range []string{"true", "false-is-success", "missing-false", "missing-true", "identity", "owned-target", "canceled", "concurrent", "live-update"} {
+			for _, scenario := range []string{"true", "false-is-success", "missing-false", "missing-true", "identity", "owned-target", "canceled", "concurrent", "live-update", "delete-and-recreate"} {
 				if !passed["TestDriverConformance/"+name+"/"+scenario] {
 					return 0, fmt.Errorf("missing integration contract case: %s/%s", name, scenario)
 				}

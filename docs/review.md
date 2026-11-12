@@ -57,6 +57,16 @@ The coverage inventory was also checked with a disposable unimported runtime pac
 
 This candidate passed 169 unit cases, all seven executable programs, 565/565 runtime statements, and all 87 separate integration cases with race detection. Module inventory, tidy parity, generated-document parity, race checks, and vet passed across the relevant modules. Native Go 1.24.13, LaunchDarkly Go 1.25.5, and OpenFeature Go 1.26.0 suites also passed with race detection.
 
+## Further propagation and document compatibility passes
+
+The shared integration contract previously observed a false live update through Enabled. Because Enabled uses a false fallback, a provider failure could satisfy that observation. Both update directions now require a successful Decision and use the opposite fallback. The shared contract also requires all five backend configurations to delete an existing flag, observe ErrNotFound with both explicit fallbacks, and recreate the flag as a successful false decision. The real LaunchDarkly Relay receives versioned native tombstones; GO Feature Flag retrieves a complete document with the flag removed. Each adapter continues to use its provider's own update lifecycle.
+
+The integration evidence gate now requires deletion and recreation for every backend. Direct regressions remove each backend's deletion result from otherwise complete evidence and require rejection. The decoder fuzz property also checks that every accepted document can be encoded and decoded without changing its canonical revision, with additional valid rule and rollout seeds.
+
+These passes found gaps in test assertions and behavioral coverage, without identifying another runtime defect. Public APIs, configuration, schema, revision and rollout algorithms, dependencies, and Go minimums are unchanged.
+
+The candidate passed 176 unit cases, all seven executable programs, 565/565 runtime statements, and 92 separate integration cases with race detection. Module inventory, tidy parity, generated-document parity, race checks, and vet passed across the relevant modules. The native Go 1.24.13 race suite passed. Decoder fuzzing completed 9,075,206 executions in 46 seconds without a failure; this count includes rejected inputs as well as accepted-document round trips.
+
 ## Documentation and distribution
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

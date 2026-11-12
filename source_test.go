@@ -172,6 +172,8 @@ func TestReadFileFailures(t *testing.T) {
 func FuzzDecode(f *testing.F) {
 	f.Add([]byte(`{"schema":1,"flags":{}}`))
 	f.Add([]byte(`{"schema":1,"flags":{"a":{"default":false}}}`))
+	f.Add([]byte(`{"schema":1,"flags":{"a":{"default":true,"rules":[{"subjects":["tenant:b","tenant:a"],"value":false}]}}}`))
+	f.Add([]byte(`{"schema":1,"flags":{"a":{"default":false,"rules":[{"attributes":{"plan":"pro"},"rollout":{"basis_points":5000,"salt":"v1"},"value":true}]}}}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		doc, err := Decode(data)
 		if err != nil {
@@ -180,8 +182,21 @@ func FuzzDecode(f *testing.F) {
 			}
 			return
 		}
-		if _, err := compile(doc); err != nil {
+		state, err := compile(doc)
+		if err != nil {
 			t.Fatal(err)
+		}
+		canonical, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		roundTrip, err := Decode(canonical)
+		if err != nil {
+			t.Fatal("validated document could not be decoded after encoding", err)
+		}
+		next, err := compile(roundTrip)
+		if err != nil || next.revision != state.revision {
+			t.Fatal("canonical round trip changed the revision", err)
 		}
 	})
 }
