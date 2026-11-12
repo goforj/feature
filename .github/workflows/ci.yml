@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.24.x', stable]
+    env:
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Check formatting and module ownership
+        run: |
+          test -z "$(gofmt -l .)"
+          make modules-check
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - name: Execute unit tests and instrumented example programs
+        run: make test-unit
+      - name: Check races and vet
+        run: |
+          make test-race
+          make vet
+      - name: Verify documentation tooling and generated parity
+        run: |
+          make test-tools
+          make generate
+          make check-generated
+          git diff --exit-code -- README.md docs/unit-results.json docs/assets
+      - name: Check optional Codecov configuration
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('configured=' + str(bool(os.environ.get('CODECOV_TOKEN'))).lower() + '\n')
+          PYCODE
+      - name: Upload unit coverage when Codecov has been configured
+        if: steps.codecov.outputs.configured == 'true'
+        uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: .artifacts/unit.cover
+          flags: unit
+          disable_search: true
+          fail_ci_if_error: true
