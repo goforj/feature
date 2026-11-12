@@ -1,6 +1,6 @@
 # Development
 
-This checkout contains one module, github.com/goforj/feature, with a Go 1.24 minimum. The root module has no external requirements. Canonical executable examples share the module. Documentation generation uses Python 3 standard-library tooling, so consumers need no generator dependency.
+This checkout contains one module, github.com/goforj/feature, with a Go 1.24 minimum. The root module has no external requirements. Canonical executable examples share the module. Documentation and coverage tooling use the same standard-library Go toolchain as the library.
 
 ## Scope and implementation decision
 
@@ -29,9 +29,9 @@ make check-generated
 
 Tests use real temporary files for native file-source behavior. There is no service-backed driver or separate service integration suite. Memory and file source behavior, including failure recovery, is exercised in ordinary unit tests. Linux CI and local macOS runs execute the same suite; CI also verifies the minimum Go line.
 
-The unit runner executes Go tests and all canonical example programs, instruments example subprocesses against the root library package, and merges their coverage. It requires exact coverage of every statement in the runtime library package. Program scaffolding and Python build tooling are validated separately rather than represented as covered runtime code. Each run writes executed case counts, covered statement counts, toolchain identity, and source fingerprint under .artifacts. Use make record-unit to update docs/unit-results.json deliberately after source changes. Statement totals can differ between Go versions; every run must independently achieve exact full coverage without rewriting evidence recorded on another toolchain. No integration run supplies missing unit coverage.
+The unit runner executes Go tests and all canonical example programs, instruments example subprocesses against the root library package, and merges their coverage. It requires exact coverage of every statement in the runtime library package. Program scaffolding and Go build tooling are validated separately rather than represented as covered runtime code. Each run writes executed case counts, covered statement counts, toolchain identity, and source fingerprint under .artifacts. Use make record-unit to update docs/unit-results.json deliberately after source changes. Statement totals can differ between Go versions; every run must independently achieve exact full coverage without rewriting evidence recorded on another toolchain. No integration run supplies missing unit coverage.
 
-GoDoc owns API descriptions. examples/*/main.go owns snippets and checked expected output. docs/README.tmpl.md owns the surrounding presentation. tools/generate.py checks API names, associated calls, snippet boundaries, and current unit evidence, then generates README.md and status badges. Regeneration twice must preserve the bytes. Never edit the generated README to repair a source issue.
+GoDoc owns API descriptions. examples/*/main.go owns snippets and checked expected output. docs/README.tmpl.md owns the surrounding presentation. tools/maintain checks API names, associated calls, snippet boundaries, and current unit evidence, then generates README.md and status badges. Regeneration twice must preserve the bytes. Never edit the generated README to repair a source issue.
 
 Keep source-owned comments and expected output immediately adjacent to calls. One final Output comment per program supplies the executable runner's full output contract. During race runs, subprocess programs receive race instrumentation too.
 

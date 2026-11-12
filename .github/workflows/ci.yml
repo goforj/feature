@@ -47,11 +47,11 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
-          python3 - <<'PYCODE'
-          import os
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('configured=' + str(bool(os.environ.get('CODECOV_TOKEN'))).lower() + '\n')
-          PYCODE
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload unit coverage when Codecov has been configured
         if: steps.codecov.outputs.configured == 'true'
         uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0

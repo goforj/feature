@@ -4,10 +4,10 @@ test:
 	go test ./...
 
 test-unit:
-	python3 scripts/test-unit.py
+	go run ./tools/maintain test-unit
 
 record-unit:
-	python3 scripts/test-unit.py --record
+	go run ./tools/maintain record-unit
 
 test-coverage: test-unit
 
@@ -24,10 +24,10 @@ modules-check:
 	@test "$$(find . -name go.mod -not -path './.git/*' | sort)" = './go.mod'
 
 generate:
-	python3 tools/generate.py
+	go run ./tools/maintain generate
 
 check-generated:
-	python3 scripts/check-generated.py
+	go run ./tools/maintain check-generated
 
 test-tools:
-	python3 -m unittest discover -s tools -p 'test_*.py'
+	go test ./internal/devtools ./tools/maintain

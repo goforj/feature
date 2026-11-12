@@ -2,8 +2,8 @@
   "covered_statements": 275,
   "executed_programs": 4,
   "go_version": "go version go1.27.4 darwin/arm64",
-  "passed_tests": 92,
+  "passed_tests": 105,
   "scope": "github.com/goforj/feature runtime package; tooling and executable scaffolding are not runtime library code",
-  "source_fingerprint": "978ab19c0be7465dd7e82c3c148d9bbd62a9800becadead169c0ec881bcf90eb",
+  "source_fingerprint": "49b8362c9a4c6d61e1c28b7f91afec519cb0e053ef6aeae1e9234ec255b0d159",
   "statements": 275
 }
