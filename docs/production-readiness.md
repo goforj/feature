@@ -30,7 +30,9 @@ The local candidate passed 418 unit cases, all 12 executable programs, exact 196
 
 Independent [performance measurements](performance.md) show the representative structured case improving from 121.502 us and 222,424 bytes to 17.713 us and 7,680 bytes. The largest supported fixture improved from 42.723 ms and 71,387,544 bytes to 5.935 ms and 70,528 bytes. Scalar allocation counts are unchanged. These are measured configurations on one host, not deployment-wide SLOs.
 
-The source gates are closed. Final acceptance still requires updating every first-party module requirement to the hardened runtime commit, independent installation of those actual Git versions, and green CI/Security for the resulting candidate. No versioned release or external account changes are included.
+Source and independent-installation gates are closed. The hardened runtime commit is `2fe3a029014f`; both adapters at `d1154b28f5d5` require it. Examples and integration also pin hardened source, with development replacements preserved. Four fresh external consumers passed using Go 1.24.13, 1.25.5, 1.26.0, and 1.27.4, with GOWORK=off and no replacements. Each rejected the original regex expansion counterexample, including adapter-only consumers selecting their declared minimum root. Exact versions are recorded in [verification](verification.md).
+
+This is acceptance of the standalone library for production use within the documented contracts, supported by passing CI/Security for the candidate. Any later source candidate must rerun the affected gates. It does not claim hosted-account verification, real-App adoption, a public release, or compatibility beyond the capability matrix. No versioned publication or external account changes are included.
 
 ## Operational boundaries
 

@@ -14,6 +14,23 @@ Both the direct LaunchDarkly driver and OpenFeature LaunchDarkly provider run th
 
 `make test-race vet tidy modules-check test-tools generate check-generated` passed. Tidy checks all five modules; vet includes integration-tagged code. Documentation generation checks two-pass byte parity. `govulncheck` v1.9.0 on Go 1.27.4 found no vulnerabilities in any of the three runtime packages. The scan does not certify every test dependency or container image.
 
+## Production candidate Git consumers
+
+The hardened native runtime is `v0.0.0-20261112220916-2fe3a029014f`. Both adapters at `v0.0.0-20261112221100-d1154b28f5d5` require that runtime. Examples and integration pins were advanced to the same hardened source while preserving development replacements.
+
+Four fresh external consumers installed those actual Git versions with GOWORK=off, no local replacements, and normal checksum verification for public dependencies:
+
+| Consumer | Executed Go | Selected root |
+| :--- | :--- | :--- |
+| Native only | 1.24.13 | `2fe3a029014f` |
+| LaunchDarkly only | 1.25.5 | Adapter's declared `2fe3a029014f` requirement |
+| OpenFeature only | 1.26.0 | Adapter's declared `2fe3a029014f` requirement |
+| Native and both drivers | 1.27.4 | `2fe3a029014f` |
+
+All consumers executed their native/SDK workflows with race detection. Each also rejected the original regex expansion counterexample and resolved the new pattern-limit API. Adapter-only consumers did not force a root upgrade, so the declared minimum itself provides the protection. Private Git authentication was process-local. These checks establish the current private installation model, not public-proxy availability or a versioned release.
+
+The [production-readiness assessment](production-readiness.md) records the source, stress, review, performance, and operational acceptance gates. The earlier installation records below remain historical evidence for their stated commits.
+
 ## Expanded clean Git consumers
 
 Four independent consumers installed the expanded library outside the checkout using actual Git pseudo-versions, with `GOWORK=off`, no local replacements, and race detection. Each exercised the APIs rather than only compiling an import.

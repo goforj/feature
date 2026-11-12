@@ -157,7 +157,7 @@ Security review reproduced regex compilation amplification outside the previous 
 
 Independent estimator properties covered the actual regex compiler, not only its syntax program, on minimum and current Go versions. The original expansion, Unicode-table, hidden-capacity, and anchored-repeat counterexamples reject. Two fresh closure rounds found no additional actionable issue within the documented supported usage. Separate properties covered nested numeric/time targeting, typed values, composed definitions, source round trips, snapshots, and exact rollouts.
 
-The candidate passed 418 unit cases, 12 programs, and 1966/1966 runtime statements. All 160 separate integration cases passed with race detection, plus five shuffled full-suite repetitions. Independent multi-domain SDK/outage/subscription stress passed 30 repetitions, and minimum-version, module, documentation, and vulnerability checks passed. First-party published requirements and independent Git consumer verification must select the hardened commit before final acceptance.
+The candidate passed 418 unit cases, 12 programs, and 1966/1966 runtime statements. All 160 separate integration cases passed with race detection, plus five shuffled full-suite repetitions after runtime fixes. Independent multi-domain SDK/outage/subscription stress passed 30 repetitions, and minimum-version, module, documentation, and vulnerability checks passed. Both adapters now require hardened root commit 2fe3a029014f. Independent native-only, each-adapter-only, and combined consumers passed with no local replacements and verified the regex rejection behavior. The [acceptance assessment](production-readiness.md) records the supported production boundary.
 
 ## Distribution inventory
 
