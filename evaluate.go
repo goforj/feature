@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"hash"
+	"time"
 )
 
 // Reason explains the selected value without recording targeting data.
@@ -43,6 +44,7 @@ type Decision struct {
 // View holds a complete immutable revision for request or job consistency.
 type View struct {
 	state *compiled
+	at    time.Time
 }
 
 // Enabled evaluates against this view and returns the caller fallback on failure.
@@ -58,6 +60,14 @@ func (v *View) Evaluate(ctx context.Context, key string, fallback bool, subject 
 
 // matches requires every condition, with missing identities excluded from rollouts.
 func matches(rule Rule, key string, subject Subject) bool {
+	return matchesAt(rule, key, subject, time.Now())
+}
+
+// matchesAt keeps calendar eligibility and stable targeting on one captured evaluation time.
+func matchesAt(rule Rule, key string, subject Subject, at time.Time) bool {
+	if rule.Start != nil && at.Before(*rule.Start) || rule.End != nil && !at.Before(*rule.End) {
+		return false
+	}
 	if len(rule.Subjects) > 0 {
 		found := false
 		for _, candidate := range rule.Subjects {
@@ -75,8 +85,20 @@ func matches(rule Rule, key string, subject Subject) bool {
 			return false
 		}
 	}
+	for _, condition := range rule.Conditions {
+		if !conditionMatches(condition, subject) {
+			return false
+		}
+	}
+	if rule.Split != nil && subject.Key == "" {
+		return false
+	}
 	if rule.Rollout != nil {
-		return subject.Key != "" && bucket(key, rule.Rollout.Salt, subject.Key) < uint64(rule.Rollout.BasisPoints)
+		percentage := rule.Rollout.BasisPoints
+		if rule.Rollout.Progressive != nil {
+			percentage = progressiveBasis(*rule.Rollout.Progressive, at)
+		}
+		return subject.Key != "" && bucket(key, rule.Rollout.Salt, subject.Key) < uint64(percentage)
 	}
 	return true
 }

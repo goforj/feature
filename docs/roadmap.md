@@ -6,10 +6,13 @@ The [provider study](provider-study.md) informed a provider-neutral client with 
 
 ## Implemented
 
-- [x] Boolean evaluation with explicit fallbacks and decision reasons.
+- [x] Boolean, string, integer, float, and object evaluation with explicit fallbacks and decision reasons.
+- [x] Native OpenFeature provider with typed evaluation, lifecycle ownership, change events, and tracking integration.
+- [x] Typed conditions, named variants, weighted splits, scheduled windows, and progressive native rollouts.
+- [x] HTTP retrieval, custom source adapters, observers, analytics sinks, and webhook notifications.
 - [x] Exact identity and attribute targeting, ordered rules, and stable percentage rollouts.
 - [x] Immutable request/job views and atomic complete-document publication.
-- [x] Memory and JSON file sources with explicit refresh and an owned polling lifecycle.
+- [x] Memory, JSON file, HTTP, and custom sources with explicit refresh and a caller-owned polling lifecycle.
 - [x] Last-valid snapshot retention, source error redaction, and document bounds.
 - [x] Executable examples, generated documentation, Go maintenance tooling, and CI/Security workflows.
 - [x] Exact full runtime-library statement coverage, race checks, minimum Go validation, and decoder fuzzing.
@@ -74,4 +77,4 @@ This work belongs in `goforj`, with public guidance in `goforj-docs`.
 - [ ] Shared remote document sources when an application needs cross-host distribution.
 - [ ] Administration commands or UI, with explicit authorization, persistence, and audit behavior.
 
-Experiments, exposure analytics, browser SDKs, and additional dedicated vendor drivers remain deferred. Typed flag values need an explicit scope decision; the initial cross-driver proof is boolean evaluation. The proposed OpenFeature adapter is now part of the pre-v1 driver work above.
+Statistical experiment analysis, browser SDKs, and additional dedicated vendor drivers remain deferred. Weighted allocation, custom tracking, and evaluation observability are implemented. Typed flag values, native OpenFeature provider support, typed targeting, named variants, scheduled/progressive rules, HTTP sources, and observability primitives are included in the current library build. Broader backend-specific administration and statistical analysis remain separate. The proposed OpenFeature adapter is now part of the pre-v1 driver work above.

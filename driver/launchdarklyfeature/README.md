@@ -21,3 +21,5 @@ INTEGRATION_RUN='TestDriverConformance/launchdarkly|TestLaunchDarkly' make test-
 ```
 
 Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Required integration tests additionally run through the official LaunchDarkly Relay Docker image, checking targeting, updates, authentication, analytics forwarding, and container outage recovery. Its upstream data plane is a local fixture, so hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.
+
+Track submits custom data or numeric metrics through the official SDK, retaining its hooks, privacy, batching, and delivery policy. SupportsTracking describes SDK submission capability, not delivery confirmation. Integration tests inspect custom events and metrics after they cross the real Relay container.

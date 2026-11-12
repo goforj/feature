@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 	"unicode/utf8"
 )
 
@@ -105,11 +106,14 @@ type wireDocument struct {
 
 // wireFlag distinguishes an explicit false default from an omitted default.
 type wireFlag struct {
-	Default  json.RawMessage `json:"default"`
-	Disabled bool            `json:"disabled"`
-	Rules    []wireRule      `json:"rules"`
-	Type     ValueType       `json:"type"`
-	Off      json.RawMessage `json:"off"`
+	Default        json.RawMessage            `json:"default"`
+	Disabled       bool                       `json:"disabled"`
+	Rules          []wireRule                 `json:"rules"`
+	Type           ValueType                  `json:"type"`
+	Off            json.RawMessage            `json:"off"`
+	Variants       map[string]json.RawMessage `json:"variants"`
+	DefaultVariant string                     `json:"default_variant"`
+	OffVariant     string                     `json:"off_variant"`
 }
 
 // wireRule preserves required values and rollout percentages while decoding.
@@ -118,12 +122,45 @@ type wireRule struct {
 	Attributes map[string]string `json:"attributes"`
 	Rollout    *wireRollout      `json:"rollout"`
 	Value      json.RawMessage   `json:"value"`
+	Variant    string            `json:"variant"`
+	Split      *wireSplit        `json:"split"`
+	Conditions []wireCondition   `json:"conditions"`
+	Start      *time.Time        `json:"start"`
+	End        *time.Time        `json:"end"`
 }
 
 // wireRollout prevents an omitted percentage from silently becoming zero.
 type wireRollout struct {
+	BasisPoints *int             `json:"basis_points"`
+	Salt        string           `json:"salt"`
+	Progressive *wireProgressive `json:"progressive"`
+}
+
+// wireCondition retains numeric comparison precision until normalization.
+type wireCondition struct {
+	Attribute string          `json:"attribute"`
+	Operator  Operator        `json:"op"`
+	Value     json.RawMessage `json:"value"`
+}
+
+// wireProgressive distinguishes explicit zero endpoints from missing percentages.
+type wireProgressive struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+	From  *int      `json:"from"`
+	To    *int      `json:"to"`
+}
+
+// wireSplit preserves required allocation weights before native validation.
+type wireSplit struct {
+	Salt        string           `json:"salt"`
+	Allocations []wireAllocation `json:"allocations"`
+}
+
+// wireAllocation keeps omitted zero weights from silently disabling a variation.
+type wireAllocation struct {
+	Variant     string `json:"variant"`
 	BasisPoints *int   `json:"basis_points"`
-	Salt        string `json:"salt"`
 }
 
 // Encode validates and serializes normalized definitions with stable type annotations.
@@ -169,14 +206,22 @@ func Decode(data []byte) (Document, error) {
 		doc.Flags = make(map[string]Flag, len(wire.Flags))
 	}
 	for key, flag := range wire.Flags {
-		if flag.Default == nil {
+		if flag.Default == nil && flag.DefaultVariant == "" {
 			return Document{}, ErrInvalidDocument
 		}
-		defaultValue := decodeValue(flag.Default)
-		if defaultValue == nil {
-			return Document{}, ErrInvalidDocument
+		value := Flag{Disabled: flag.Disabled, Type: flag.Type, DefaultVariant: flag.DefaultVariant, OffVariant: flag.OffVariant}
+		if flag.Default != nil {
+			value.Default = decodeValue(flag.Default)
+			if value.Default == nil {
+				return Document{}, ErrInvalidDocument
+			}
 		}
-		value := Flag{Default: defaultValue, Disabled: flag.Disabled, Type: flag.Type}
+		if flag.Variants != nil {
+			value.Variants = make(map[string]any, len(flag.Variants))
+			for name, raw := range flag.Variants {
+				value.Variants[name] = decodeValue(raw)
+			}
+		}
 		if flag.Off != nil {
 			value.Off = decodeValue(flag.Off)
 			if value.Off == nil {
@@ -184,19 +229,47 @@ func Decode(data []byte) (Document, error) {
 			}
 		}
 		for _, rule := range flag.Rules {
-			if rule.Value == nil {
+			if rule.Value == nil && rule.Variant == "" && rule.Split == nil {
 				return Document{}, ErrInvalidDocument
 			}
-			ruleValue := decodeValue(rule.Value)
-			if ruleValue == nil {
-				return Document{}, ErrInvalidDocument
-			}
-			next := Rule{Subjects: rule.Subjects, Attributes: rule.Attributes, Value: ruleValue}
-			if rule.Rollout != nil {
-				if rule.Rollout.BasisPoints == nil {
+			next := Rule{Subjects: rule.Subjects, Attributes: rule.Attributes, Variant: rule.Variant, Start: rule.Start, End: rule.End}
+			if rule.Value != nil {
+				next.Value = decodeValue(rule.Value)
+				if next.Value == nil {
 					return Document{}, ErrInvalidDocument
 				}
-				next.Rollout = &Rollout{BasisPoints: *rule.Rollout.BasisPoints, Salt: rule.Rollout.Salt}
+			}
+			for _, condition := range rule.Conditions {
+				var operand any
+				if condition.Value != nil {
+					operand = decodeValue(condition.Value)
+				}
+				next.Conditions = append(next.Conditions, Condition{Attribute: condition.Attribute, Operator: condition.Operator, Value: operand})
+			}
+			if rule.Split != nil {
+				next.Split = &Split{Salt: rule.Split.Salt}
+				for _, allocation := range rule.Split.Allocations {
+					if allocation.BasisPoints == nil {
+						return Document{}, ErrInvalidDocument
+					}
+					next.Split.Allocations = append(next.Split.Allocations, Allocation{Variant: allocation.Variant, BasisPoints: *allocation.BasisPoints})
+				}
+			}
+			if rule.Rollout != nil {
+				if rule.Rollout.BasisPoints == nil && rule.Rollout.Progressive == nil {
+					return Document{}, ErrInvalidDocument
+				}
+				next.Rollout = &Rollout{Salt: rule.Rollout.Salt}
+				if rule.Rollout.BasisPoints != nil {
+					next.Rollout.BasisPoints = *rule.Rollout.BasisPoints
+				}
+				if rule.Rollout.Progressive != nil {
+					progress := rule.Rollout.Progressive
+					if progress.From == nil || progress.To == nil {
+						return Document{}, ErrInvalidDocument
+					}
+					next.Rollout.Progressive = &Progressive{Start: progress.Start, End: progress.End, From: *progress.From, To: *progress.To}
+				}
 			}
 			value.Rules = append(value.Rules, next)
 		}
@@ -227,7 +300,7 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 				return ErrInvalidDocument
 			}
 			key := token.(string)
-			if (kind == "flags" || kind == "flags2") && len(seen) >= MaxFlags || kind == "attributes" && len(seen) >= MaxAttributes || kind == "value" && len(seen) >= MaxSubjects {
+			if len(seen) >= objectLimit(kind) {
 				return ErrInvalidDocument
 			}
 			if seen[key] {
@@ -247,7 +320,7 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 	case json.Delim('['):
 		count := 0
 		for decoder.More() {
-			if (kind == "rules" || kind == "rules2") && count >= MaxRules || kind == "subjects" && count >= MaxSubjects || kind == "value" && count >= MaxSubjects {
+			if count >= arrayLimit(kind) {
 				return ErrInvalidDocument
 			}
 			count++
@@ -260,6 +333,12 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 			}
 			if kind == "value" {
 				next = "value"
+			}
+			if kind == "conditions" {
+				next = "condition"
+			}
+			if kind == "allocations" {
+				next = "allocation"
 			}
 			if err := scanJSON(decoder, next, depth+1); err != nil {
 				return err
@@ -289,12 +368,36 @@ func fieldKind(kind, key string) (string, bool) {
 		if key == "rules" {
 			return "rules2", true
 		}
-		return "scalar", key == "type" || key == "disabled"
+		if key == "variants" {
+			return "variants", true
+		}
+		return "scalar", key == "type" || key == "disabled" || key == "default_variant" || key == "off_variant"
 	case "rule2":
 		if key == "value" {
 			return "value", true
 		}
-		return key, key == "subjects" || key == "attributes" || key == "rollout"
+		if key == "rollout" {
+			return "rollout2", true
+		}
+		return key, key == "subjects" || key == "attributes" || key == "conditions" || key == "split" || key == "start" || key == "end" || key == "variant"
+	case "variants":
+		return "value", true
+	case "condition":
+		if key == "value" {
+			return "value", true
+		}
+		return "scalar", key == "attribute" || key == "op"
+	case "split":
+		return key, key == "salt" || key == "allocations"
+	case "allocation":
+		return "scalar", key == "variant" || key == "basis_points"
+	case "rollout2":
+		if key == "progressive" {
+			return "progressive", true
+		}
+		return "scalar", key == "salt" || key == "basis_points"
+	case "progressive":
+		return "scalar", key == "start" || key == "end" || key == "from" || key == "to"
 	case "value":
 		return "value", true
 	case "document":
@@ -311,6 +414,26 @@ func fieldKind(kind, key string) (string, bool) {
 		return "scalar", true
 	default:
 		return "", false
+	}
+}
+
+// objectLimit bounds dynamic JSON inventories before typed containers allocate.
+func objectLimit(kind string) int {
+	if kind == "attributes" || kind == "variants" {
+		return MaxAttributes
+	}
+	return MaxFlags
+}
+
+// arrayLimit bounds rules, conditions, and structured values independently.
+func arrayLimit(kind string) int {
+	switch kind {
+	case "rules", "rules2":
+		return MaxRules
+	case "conditions", "allocations":
+		return MaxAttributes
+	default:
+		return MaxSubjects
 	}
 }
 

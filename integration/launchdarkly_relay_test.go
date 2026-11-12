@@ -46,10 +46,17 @@ type launchDarklyFixture struct {
 	flags        map[string]ldmodel.FeatureFlag
 	listeners    map[chan struct{}]bool
 	events       map[string]int
+	customEvents map[string]collectedCustomEvent
 	contexts     map[string]json.RawMessage
 	privateLeaks map[string]bool
 	version      int
 	streams      atomic.Int64
+}
+
+// collectedCustomEvent captures actual vendor payload fields without synthesizing delivery evidence.
+type collectedCustomEvent struct {
+	Data        json.RawMessage
+	MetricValue *float64
 }
 
 var launchDarklyPool = struct {
@@ -66,6 +73,7 @@ func launchDarklyRelay(t *testing.T) *launchDarklyFixture {
 		fixture.flags = make(map[string]ldmodel.FeatureFlag)
 		fixture.listeners = make(map[chan struct{}]bool)
 		fixture.events = make(map[string]int)
+		fixture.customEvents = make(map[string]collectedCustomEvent)
 		fixture.contexts = make(map[string]json.RawMessage)
 		fixture.privateLeaks = make(map[string]bool)
 		fixture.publish(relayFlag("bootstrap", false).Build())
@@ -233,8 +241,10 @@ func (f *launchDarklyFixture) acceptEvents(w http.ResponseWriter, r *http.Reques
 	if r.URL.Path == "/bulk" {
 		data, err := io.ReadAll(body)
 		var events []struct {
-			Kind, Key string
-			Context   json.RawMessage
+			Kind, Key   string
+			Context     json.RawMessage
+			Data        json.RawMessage
+			MetricValue *float64
 		}
 		if err != nil || json.Unmarshal(data, &events) != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -242,6 +252,9 @@ func (f *launchDarklyFixture) acceptEvents(w http.ResponseWriter, r *http.Reques
 		}
 		f.mu.Lock()
 		for _, event := range events {
+			if event.Kind == "custom" {
+				f.customEvents[event.Key] = collectedCustomEvent{Data: event.Data, MetricValue: event.MetricValue}
+			}
 			if event.Kind == "feature" {
 				f.events[event.Key]++
 			}

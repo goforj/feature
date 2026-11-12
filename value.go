@@ -27,6 +27,8 @@ const (
 )
 
 var (
+	// ErrInvalidConfig identifies invalid source, transport, or lifecycle configuration.
+	ErrInvalidConfig = errors.New("feature: invalid configuration")
 	// ErrInvalidValue identifies unsupported, non-finite, or oversized values.
 	ErrInvalidValue = errors.New("feature: invalid value")
 	// ErrUnsupported identifies a capability absent from the selected driver.
@@ -88,6 +90,10 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 	case float64:
 		return cloneFloat(value)
 	case json.Number:
+		*budget += len(value)
+		if *budget > MaxValueBytes || !json.Valid([]byte(value)) {
+			return nil, ErrInvalidValue
+		}
 		if integer, err := strconv.ParseInt(string(value), 10, 64); err == nil {
 			return integer, nil
 		}
@@ -96,6 +102,23 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 		}
 		return nil, ErrInvalidValue
 	case map[string]any:
+		if len(value) > MaxSubjects {
+			return nil, ErrInvalidValue
+		}
+		result := make(map[string]any, len(value))
+		for key, item := range value {
+			*budget += len(key)
+			if !utf8.ValidString(key) {
+				return nil, ErrInvalidValue
+			}
+			next, err := cloneValue(item, depth+1, budget)
+			if err != nil {
+				return nil, err
+			}
+			result[key] = next
+		}
+		return result, nil
+	case map[string]string:
 		if len(value) > MaxSubjects {
 			return nil, ErrInvalidValue
 		}
@@ -123,6 +146,19 @@ func cloneValue(value any, depth int, budget *int) (any, error) {
 				return nil, err
 			}
 			result[i] = next
+		}
+		return result, nil
+	case []string:
+		if len(value) > MaxSubjects {
+			return nil, ErrInvalidValue
+		}
+		result := make([]any, len(value))
+		for index, item := range value {
+			next, err := cloneValue(item, depth+1, budget)
+			if err != nil {
+				return nil, err
+			}
+			result[index] = next
 		}
 		return result, nil
 	default:
@@ -167,6 +203,9 @@ func valueType(value any) ValueType {
 // CopyValue owns a value of the requested type and rejects lossy coercion.
 func CopyValue(value any, kind ValueType) (any, error) {
 	if number, ok := value.(json.Number); ok && kind == TypeFloat {
+		if len(number) > MaxValueBytes || !json.Valid([]byte(number)) {
+			return nil, ErrInvalidValue
+		}
 		parsed, err := number.Float64()
 		if err != nil {
 			return nil, ErrInvalidValue

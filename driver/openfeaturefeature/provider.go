@@ -5,19 +5,28 @@ import (
 	"errors"
 	"github.com/goforj/feature"
 	"github.com/open-feature/go-sdk/openfeature"
+	"sync"
 	"sync/atomic"
 )
 
 // Provider exposes an injected evaluator to ordinary OpenFeature SDK consumers.
 // It borrows the evaluator: shutdown disables this provider without closing its engine.
 type Provider struct {
-	features *feature.Features
-	closed   atomic.Bool
+	features     *feature.Features
+	closed       atomic.Bool
+	evaluator    feature.Evaluator
+	mu           sync.Mutex
+	once         sync.Once
+	started      bool
+	subscription *feature.Subscription
+	stop         chan struct{}
+	done         chan struct{}
+	events       chan openfeature.Event
 }
 
 // NewProvider exposes an initialized engine without global registration or a second update loop.
-func NewProvider(evaluator feature.Evaluator) *Provider {
-	return &Provider{features: feature.New(evaluator)}
+func NewProvider(evaluator feature.Evaluator, options ...feature.Option) *Provider {
+	return &Provider{features: feature.New(evaluator, options...), evaluator: evaluator, events: make(chan openfeature.Event, 16)}
 }
 
 // Metadata identifies this provider independently of its source or targeting data.
@@ -41,11 +50,11 @@ func (p *Provider) InitWithContext(ctx context.Context, _ openfeature.Evaluation
 	if p.closed.Load() {
 		return feature.ErrClosed
 	}
-	return nil
+	return p.startEvents(ctx)
 }
 
 // Shutdown disables the provider while leaving its borrowed evaluator usable.
-func (p *Provider) Shutdown() { p.closed.Store(true) }
+func (p *Provider) Shutdown() { p.stopEvents() }
 
 // ShutdownWithContext disables this provider without closing borrowed resources.
 func (p *Provider) ShutdownWithContext(context.Context) error { p.Shutdown(); return nil }

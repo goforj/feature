@@ -77,6 +77,16 @@ func integrationCases(events []byte, full bool) (int, error) {
 		return 0, errors.New("no integration tests executed")
 	}
 	if full {
+		for _, name := range []string{"TestLaunchDarklyCustomTracking", "TestOpenFeatureLaunchDarklyTrackingCapability", "TestGOFeatureFlagCustomTracking/REMOTE", "TestGOFeatureFlagCustomTracking/INPROCESS"} {
+			if !passed[name] {
+				return 0, fmt.Errorf("missing tracking integration: %s", name)
+			}
+		}
+		for _, scenario := range []string{"typed-conditions", "calendar-snapshot", "weighted-variants", "custom-analytics", "refresh-and-notification", "last-valid-retention", "notification-failure-isolation"} {
+			if !passed["TestNativeHTTPModelWorkflow/"+scenario] {
+				return 0, fmt.Errorf("missing native HTTP workflow: %s", scenario)
+			}
+		}
 		for _, name := range []string{"native", "openfeature-native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
 			for _, scenario := range []string{"string", "integer", "float", "object", "wrong-type", "missing", "canceled", "live-update"} {
 				if !passed["TestTypedDriverConformance/"+name+"/"+scenario] {

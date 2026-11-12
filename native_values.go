@@ -34,18 +34,35 @@ func evaluateNative[T any](v *View, ctx context.Context, key string, fallback T,
 		return result
 	}
 	value := flag.Default
+	if flag.DefaultVariant != "" {
+		value = flag.Variants[flag.DefaultVariant]
+	}
 	result.Reason = ReasonDefault
+	result.Variant = flag.DefaultVariant
 	if flag.Disabled {
 		result.Reason = ReasonDisabled
+		result.Variant = flag.OffVariant
 		value = flag.Off
+		if flag.OffVariant != "" {
+			value = flag.Variants[flag.OffVariant]
+		}
 		if value == nil {
 			value = false
 		}
 	} else {
 		for _, rule := range flag.Rules {
-			if matches(rule, key, subject) {
+			if matchesAt(rule, key, subject, v.at) {
 				value = rule.Value
+				if rule.Variant != "" {
+					value = flag.Variants[rule.Variant]
+				}
+				result.Variant = rule.Variant
 				result.Reason = ReasonRule
+				if rule.Split != nil {
+					result.Variant = splitVariant(*rule.Split, key, subject.Key)
+					value = flag.Variants[result.Variant]
+					result.Reason = ReasonSplit
+				}
 				break
 			}
 		}
@@ -63,11 +80,11 @@ func nativeSubject(target Target) (Subject, error) {
 	}
 	attributes := make(map[string]string)
 	for key, value := range owned.Attributes {
-		if text, ok := value.(string); ok {
+		if text, ok := value.(string); ok && validKey(key) {
 			attributes[key] = text
 		}
 	}
-	return Subject{Key: owned.Key, Attributes: attributes}, nil
+	return Subject{Key: owned.Key, Attributes: attributes, values: owned.Attributes, kind: owned.Kind}, nil
 }
 
 // recordResult preserves aggregate accounting for all native value types.
@@ -79,22 +96,37 @@ func recordResult[T any](client *Client, result Result[T]) Result[T] {
 	return result
 }
 
+// resolveView validates portable targeting without changing snapshot accounting.
+func resolveView[T any](v *View, ctx context.Context, key string, fallback T, kind ValueType, target Target) Result[T] {
+	if ctx.Err() != nil || !validKey(key) {
+		return evaluateNative(v, ctx, key, fallback, kind, Subject{})
+	}
+	subject, err := nativeSubject(target)
+	if err != nil {
+		return Result[T]{Value: fallback, Reason: ReasonError, Revision: v.state.revision, Err: err}
+	}
+	return evaluateNative(v, ctx, key, fallback, kind, subject)
+}
+
+// Resolve lets portable targeting scopes capture both revision and evaluation time.
+func (v *View) Resolve(ctx context.Context, key string, fallback bool, target Target) Decision {
+	result := resolveView(v, ctx, key, fallback, TypeBoolean, target)
+	return Decision{Value: result.Value, Reason: result.Reason, Revision: result.Revision, Variant: result.Variant, Err: result.Err}
+}
+
 // String evaluates a typed value against this immutable snapshot.
 func (v *View) String(ctx context.Context, key string, fallback string, subject Subject) Result[string] {
 	return evaluateNative(v, ctx, key, fallback, TypeString, subject)
 }
 
-// ResolveString evaluates a typed value against the latest native snapshot.
+// ResolveString implements portable typed evaluation against this captured revision and time.
+func (v *View) ResolveString(ctx context.Context, key string, fallback string, target Target) Result[string] {
+	return resolveView(v, ctx, key, fallback, TypeString, target)
+}
+
+// ResolveString evaluates against the latest snapshot and records aggregate counters.
 func (c *Client) ResolveString(ctx context.Context, key string, fallback string, target Target) Result[string] {
-	view := c.Snapshot()
-	if ctx.Err() != nil || !validKey(key) {
-		return recordResult(c, view.String(ctx, key, fallback, Subject{}))
-	}
-	subject, err := nativeSubject(target)
-	if err != nil {
-		return recordResult(c, Result[string]{Value: fallback, Reason: ReasonError, Revision: view.state.revision, Err: err})
-	}
-	return recordResult(c, view.String(ctx, key, fallback, subject))
+	return recordResult(c, c.Snapshot().ResolveString(ctx, key, fallback, target))
 }
 
 // Int evaluates a typed value against this immutable snapshot.
@@ -102,17 +134,14 @@ func (v *View) Int(ctx context.Context, key string, fallback int64, subject Subj
 	return evaluateNative(v, ctx, key, fallback, TypeInteger, subject)
 }
 
-// ResolveInt evaluates a typed value against the latest native snapshot.
+// ResolveInt implements portable typed evaluation against this captured revision and time.
+func (v *View) ResolveInt(ctx context.Context, key string, fallback int64, target Target) Result[int64] {
+	return resolveView(v, ctx, key, fallback, TypeInteger, target)
+}
+
+// ResolveInt evaluates against the latest snapshot and records aggregate counters.
 func (c *Client) ResolveInt(ctx context.Context, key string, fallback int64, target Target) Result[int64] {
-	view := c.Snapshot()
-	if ctx.Err() != nil || !validKey(key) {
-		return recordResult(c, view.Int(ctx, key, fallback, Subject{}))
-	}
-	subject, err := nativeSubject(target)
-	if err != nil {
-		return recordResult(c, Result[int64]{Value: fallback, Reason: ReasonError, Revision: view.state.revision, Err: err})
-	}
-	return recordResult(c, view.Int(ctx, key, fallback, subject))
+	return recordResult(c, c.Snapshot().ResolveInt(ctx, key, fallback, target))
 }
 
 // Float evaluates a typed value against this immutable snapshot.
@@ -120,17 +149,14 @@ func (v *View) Float(ctx context.Context, key string, fallback float64, subject 
 	return evaluateNative(v, ctx, key, fallback, TypeFloat, subject)
 }
 
-// ResolveFloat evaluates a typed value against the latest native snapshot.
+// ResolveFloat implements portable typed evaluation against this captured revision and time.
+func (v *View) ResolveFloat(ctx context.Context, key string, fallback float64, target Target) Result[float64] {
+	return resolveView(v, ctx, key, fallback, TypeFloat, target)
+}
+
+// ResolveFloat evaluates against the latest snapshot and records aggregate counters.
 func (c *Client) ResolveFloat(ctx context.Context, key string, fallback float64, target Target) Result[float64] {
-	view := c.Snapshot()
-	if ctx.Err() != nil || !validKey(key) {
-		return recordResult(c, view.Float(ctx, key, fallback, Subject{}))
-	}
-	subject, err := nativeSubject(target)
-	if err != nil {
-		return recordResult(c, Result[float64]{Value: fallback, Reason: ReasonError, Revision: view.state.revision, Err: err})
-	}
-	return recordResult(c, view.Float(ctx, key, fallback, subject))
+	return recordResult(c, c.Snapshot().ResolveFloat(ctx, key, fallback, target))
 }
 
 // Object evaluates a typed value against this immutable snapshot.
@@ -138,15 +164,12 @@ func (v *View) Object(ctx context.Context, key string, fallback any, subject Sub
 	return evaluateNative(v, ctx, key, fallback, TypeObject, subject)
 }
 
-// ResolveObject evaluates a typed value against the latest native snapshot.
+// ResolveObject implements portable typed evaluation against this captured revision and time.
+func (v *View) ResolveObject(ctx context.Context, key string, fallback any, target Target) Result[any] {
+	return resolveView(v, ctx, key, fallback, TypeObject, target)
+}
+
+// ResolveObject evaluates against the latest snapshot and records aggregate counters.
 func (c *Client) ResolveObject(ctx context.Context, key string, fallback any, target Target) Result[any] {
-	view := c.Snapshot()
-	if ctx.Err() != nil || !validKey(key) {
-		return recordResult(c, view.Object(ctx, key, fallback, Subject{}))
-	}
-	subject, err := nativeSubject(target)
-	if err != nil {
-		return recordResult(c, Result[any]{Value: fallback, Reason: ReasonError, Revision: view.state.revision, Err: err})
-	}
-	return recordResult(c, view.Object(ctx, key, fallback, subject))
+	return recordResult(c, c.Snapshot().ResolveObject(ctx, key, fallback, target))
 }

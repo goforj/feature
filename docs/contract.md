@@ -6,7 +6,7 @@
 
 `Open(ctx, source)` synchronously loads and validates a complete document. Failure returns an error and no usable client. The source is a required dependency borrowed from the application; the client never closes it. There is no zero-value Client or View contract.
 
-Construction starts no goroutines. Call `Refresh` explicitly, or own a goroutine running `Run(ctx, interval)`. Cancel its context and wait for its return during shutdown. The minimum interval is 10 milliseconds. Only one Run loop may own a client at a time. Run waits until the first tick before refreshing; Open has already performed the initial load.
+The native engine starts no refresh goroutine. Injected sources and transports retain their own resource behavior. Call `Refresh` explicitly, or own a goroutine running `Run(ctx, interval)`. Cancel its context and wait for its return during shutdown. The minimum interval is 10 milliseconds. Only one Run loop may own a client at a time. Run waits until the first tick before refreshing; Open has already performed the initial load.
 
 A Source must honor cancellation, keep returned data stable until Refresh returns, and must not reenter that client's Refresh. Filesystem calls cannot be interrupted while in the OS; cancellation is checked at their boundaries. A custom source that ignores its context can delay shutdown.
 
@@ -70,7 +70,7 @@ Refresh loads and validates away from readers, serializes source loads, and publ
 
 Refresh rechecks cancellation after acquiring its source gate, including when acquisition and cancellation are simultaneously ready. The native typed Resolve adapter applies the same cancellation and key-validation precedence as Evaluate before converting target attributes; these early failures retain native revision and counter behavior.
 
-Snapshot captures a revision that remains fixed for its lifetime. Use one View for multiple decisions when a request or job needs consistency. Independent Client calls can legitimately see different revisions. Existing views may retain older document memory until callers release them.
+Snapshot captures a revision and evaluation time that remain fixed for its lifetime. Use one View for multiple decisions when a request or job needs consistency. Independent Client calls can legitimately see different revisions. Existing views may retain older document memory until callers release them.
 
 Revision hashes the normalized validated document, not its timestamp or raw file bytes. JSON whitespace, object-key order, and subject-list order do not change revision. Rule ordering and other document changes can change it. Revisions identify definitions, not every possible semantic equivalence.
 
@@ -107,7 +107,7 @@ Each process publishes atomically within itself. Multiple processes converge ind
 
 Jobs evaluate at execution unless the application persists an earlier decision. Feature flags do not replace authorization or billing entitlements. A stale snapshot cannot guarantee immediate emergency shutdown. Server-side rules and identities should remain private; exposing selected decisions to a browser requires application policy.
 
-The root native engine has no vendor dependencies. Optional LaunchDarkly and OpenFeature modules adapt actual SDKs through the portable boundary below, with [container integration tests](../integration). They do not change native snapshot, JSON, or rollout semantics. Administration APIs, framework integration, experimentation analytics, multivariate values, and OpenFeature specification conformance remain outside the implemented contract. The [provider study](provider-study.md) records the architecture research.
+The root native engine has no vendor dependencies. Optional LaunchDarkly and OpenFeature modules adapt actual SDKs through the portable boundary below, with [container integration tests](../integration). They do not change native snapshot, JSON, or rollout semantics. Administration APIs, framework integration, statistical experiment analysis, and full OpenFeature specification conformance remain outside the implemented contract. The [provider study](provider-study.md) records the architecture research.
 
 ## Portable evaluation
 
@@ -115,7 +115,7 @@ The root native engine has no vendor dependencies. Optional LaunchDarkly and Ope
 
 `For(Target)` owns typed targeting data for repeated checks without changing a shared client. Target is separate from the existing native Subject so the native string-map API remains source compatible. Target supports bounded booleans, Go numeric primitives, strings, time.Time, nested string-key maps, []any, and []string. Unsupported values, non-finite floats, excessive nesting, and contexts above the 64 KiB aggregate budget return ErrInvalidSubject on evaluation. A Scope is targeting data, not a frozen provider configuration.
 
-Native Client implements Evaluator through Resolve. Its existing Open, Evaluate, Enabled, Snapshot, Refresh, Run, and Status methods retain their contracts. Native rules still match string attributes only; non-string Target attributes do not match a native string condition. Native identity hashing uses the explicit key and ignores the optional identity kind. Features does not expose fake generic snapshots or start a second update loop around a vendor SDK.
+Native Client implements Evaluator through Resolve. Its existing Open, Evaluate, Enabled, Snapshot, Refresh, Run, and Status methods retain their contracts. Legacy rule attributes match strings only; schema 2 Conditions preserve typed values and structured paths. Native identity hashing uses the explicit key and ignores the optional identity kind. Features does not expose fake generic snapshots or start a second update loop around a vendor SDK.
 
 SDK adapters expose Close on their concrete drivers. New borrows its SDK client; closing that adapter disables only the adapter. Open owns its SDK resources and initialization cleanup. Concurrent Close calls wait for one cleanup attempt and return its same classified result, including repeated calls after cleanup failure. Calls already evaluating when closure begins follow the native SDK's lifecycle semantics; new evaluations return ErrClosed.
 
@@ -129,8 +129,28 @@ Schema 1 remains strict and boolean-only. Schema 2 uses the same flags inventory
 
 Defaults, rule results, and optional off values must have the same type. Disabled booleans default to false; disabled non-boolean flags require an explicit off value. Objects and arrays may contain null, booleans, strings, finite numbers, nested objects, and arrays. Standalone null flag values are rejected. Each owned value is bounded to 64 KiB and eight nested container levels, and container lengths are bounded to 1024. The complete compiled document remains bounded to 1 MiB.
 
-Features and Scope expose String, Int, Float, and Object with explicit fallbacks and Result values. Wrong-type requests return ErrTypeMismatch. Drivers without the optional TypedEvaluator contract return ErrUnsupported. Mutable fallback and successful object containers are copied. Native View has matching typed reads against one immutable revision. Native counters include typed reads through Client.
+Features and Scope expose String, Int, Float, and Object with explicit fallbacks and Result values. Wrong-type requests return ErrTypeMismatch. Drivers without the optional TypedEvaluator contract return ErrUnsupported. Validated fallback and successful object containers are copied. Native View has matching typed reads against one immutable revision. Native counters include typed reads through Client.
 
 Native integers retain int64 precision. The direct LaunchDarkly adapter rejects integer values outside the exact IEEE-754 range or with a fractional component. Other SDK providers retain their numeric semantics. The [capability matrix](capabilities.md) records these differences.
 
 The optional OpenFeature module also supplies NewProvider: ordinary OpenFeature clients can evaluate the injected engine through the standard provider contract. Provider shutdown disables its binding without closing its borrowed engine. No global registration or competing refresh loop is introduced.
+
+## Native rules and variants
+
+Schema 2 adds variants, default_variant, off_variant, and rule variant or split actions. Variant names reference one flag-local catalog and all values must agree on the flag type. A split has an explicit salt and ordered allocations totaling 10000 basis points. It requires a nonempty identity; missing identity leaves the rule ineligible. Allocation order, salt, flag key, and identity determine membership. Named actions normalize away redundant inline values. Contradictory inline values are rejected.
+
+Conditions are ANDed within each rule. Operators are eq, ne, in, not_in, gt, ge, lt, le, contains, prefix, suffix, matches, exists, and missing. Comparisons require presence except missing; an explicit null is present. Numbers compare without narrowing int64 values, including inside JSON object and array equality. No string-to-number conversion occurs. Literal attribute names are supported, while a leading slash selects JSON Pointer traversal with ~0 and ~1 escaping. $key and $kind select explicit identity fields. Patterns are bounded RE2 expressions compiled before publication.
+
+Rule start is inclusive and end is exclusive. A progressive rollout declares absolute start and end instants and integer from/to percentages in basis points. Percentages clamp before and after the interval and interpolate within it; increasing and decreasing rollouts are supported. A percentage still requires an identity at 100 percent. Calendar behavior is evaluated without a scheduling worker. Native View captures evaluation time together with its immutable definitions, and it implements TypedEvaluator for ordinary scoped use through New(view).
+
+## Observations, custom events, and delivery
+
+WithObserver attaches synchronous operation observations to the facade without exposing values or targeting data. Track submits bounded custom attributes and an optional finite metric through the selected Tracker. Native clients require WithEventSink; a facade can override its sink with WithTracker. SupportsTracking reports known configured support. Provider-specific limits are recorded in the capability matrix.
+
+Subscribe owns one bounded native listener and starts no goroutine. Close unregisters it and is idempotent. Slow listeners receive the latest revision with Keys cleared for a full refresh. Notifications include publication changes and transitions into or out of source failure. Repeated unchanged health does not trigger duplicate notifications. The native OpenFeature provider maps updates and stale/ready transitions onto the SDK event channel and owns only its forwarding worker.
+
+WithNotifier supplies an optional synchronous destination. LastNotifyError records notification failures separately from successful source publication. Callbacks must not reenter the same client's Refresh; they may inspect Status. HTTPExporter sends change notifications, custom analytics, and operation observations to an explicit endpoint. Target identities are omitted by default and require IncludeTarget to export. Observer failures are available through LastError. Delivery has no implicit retries or durable queue; applications can inject their own queue or sink.
+
+HTTPSource and HTTPExporter borrow a transport, own copied headers, reject redirects, and default to a five-second timeout. Responses are bounded and errors never retain endpoint URLs, credentials, or response diagnostics. HTTPSource decodes complete native documents and preserves last-valid snapshots through the normal client lifecycle. SourceFunc remains available for other storage systems and configuration models.
+
+Validated fallback and successful object containers are copied. A request rejected before fallback validation may return the caller's original fallback; that input is never stored in the engine. Optional observers and sinks can perform I/O, so native lookup locality does not imply a zero-I/O facade once these callbacks are configured.

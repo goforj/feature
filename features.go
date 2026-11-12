@@ -28,9 +28,9 @@ var (
 // drivers document how identity kinds and structured attributes are mapped.
 // Existing Subject remains the native engine's string-only compatibility API.
 type Target struct {
-	Key        string
-	Kind       string
-	Attributes map[string]any
+	Key        string         `json:"key,omitempty"`
+	Kind       string         `json:"kind,omitempty"`
+	Attributes map[string]any `json:"attributes,omitempty"`
 }
 
 // Clone validates bounds and owns mutable context data without changing scalar types.
@@ -156,10 +156,23 @@ type Evaluator interface {
 
 // Features provides portable flag checks through a required borrowed evaluator.
 // Native Client remains responsible for native refresh, status, and snapshots.
-type Features struct{ evaluator Evaluator }
+type Features struct {
+	evaluator Evaluator
+	observer  Observer
+	tracker   Tracker
+}
 
 // New wraps an initialized evaluator without I/O, global registration, or workers.
-func New(evaluator Evaluator) *Features { return &Features{evaluator: evaluator} }
+func New(evaluator Evaluator, options ...Option) *Features {
+	config := featuresConfig{}
+	if tracker, ok := evaluator.(Tracker); ok {
+		config.tracker = tracker
+	}
+	for _, option := range options {
+		option(&config)
+	}
+	return &Features{evaluator: evaluator, observer: config.observer, tracker: config.tracker}
+}
 
 // Enabled evaluates an untargeted flag with a false fallback.
 func (f *Features) Enabled(ctx context.Context, key string) bool {
@@ -168,7 +181,7 @@ func (f *Features) Enabled(ctx context.Context, key string) bool {
 
 // Evaluate explains an untargeted flag with an explicit fallback.
 func (f *Features) Evaluate(ctx context.Context, key string, fallback bool) Decision {
-	return f.resolve(ctx, key, fallback, Target{})
+	return f.resolve(ctx, key, fallback, Target{}, nil)
 }
 
 // For owns a target for repeated checks without mutating a shared client.
@@ -193,24 +206,25 @@ func (s *Scope) Enabled(ctx context.Context, key string) bool {
 
 // Evaluate explains a targeted flag with an explicit fallback.
 func (s *Scope) Evaluate(ctx context.Context, key string, fallback bool) Decision {
-	if err := ctx.Err(); err != nil {
-		return Decision{Value: fallback, Reason: ReasonError, Err: err}
-	}
-	if s.err != nil {
-		return Decision{Value: fallback, Reason: ReasonError, Err: s.err}
-	}
-	return s.features.resolve(ctx, key, fallback, s.target)
+	return s.features.resolve(ctx, key, fallback, s.target, s.err)
 }
 
 // resolve enforces portable fallback policy without reinterpreting successful vendor values.
-func (f *Features) resolve(ctx context.Context, key string, fallback bool, target Target) Decision {
+func (f *Features) resolve(ctx context.Context, key string, fallback bool, target Target, targetErr error) (decision Decision) {
+	started := time.Now()
+	defer func() {
+		f.observe(ctx, Observation{Operation: "evaluate", Key: key, Type: TypeBoolean, Reason: decision.Reason, Revision: decision.Revision, Variant: decision.Variant, Err: decision.Err, Duration: time.Since(started)})
+	}()
 	if err := ctx.Err(); err != nil {
 		return Decision{Value: fallback, Reason: ReasonError, Err: err}
+	}
+	if targetErr != nil {
+		return Decision{Value: fallback, Reason: ReasonError, Err: targetErr}
 	}
 	if key == "" || len(key) > MaxStringBytes || !utf8.ValidString(key) {
 		return Decision{Value: fallback, Reason: ReasonError, Err: ErrInvalidKey}
 	}
-	decision := f.evaluator.Resolve(ctx, key, fallback, target)
+	decision = f.evaluator.Resolve(ctx, key, fallback, target)
 	if decision.Err != nil {
 		decision.Value, decision.Reason = fallback, ReasonError
 		decision.Err = safeError(decision.Err)
@@ -225,7 +239,7 @@ func (f *Features) resolve(ctx context.Context, key string, fallback bool, targe
 
 // safeError prevents custom provider errors from leaking untrusted service text.
 func safeError(err error) error {
-	for _, known := range []error{context.Canceled, context.DeadlineExceeded, ErrNotFound, ErrTypeMismatch, ErrClosed, ErrInvalidSubject, ErrInvalidKey, ErrInvalidValue, ErrUnsupported, ErrUnavailable} {
+	for _, known := range []error{context.Canceled, context.DeadlineExceeded, ErrNotFound, ErrTypeMismatch, ErrClosed, ErrInvalidSubject, ErrInvalidKey, ErrInvalidValue, ErrUnsupported, ErrSource, ErrInvalidDocument, ErrInvalidConfig, ErrUnavailable} {
 		if errors.Is(err, known) {
 			return known
 		}
@@ -237,18 +251,10 @@ func safeError(err error) error {
 // Native rules match only string attributes; typed non-string attributes do not match.
 // Kind does not alter native identity hashing or its explicit key convention.
 func (c *Client) Resolve(ctx context.Context, key string, fallback bool, target Target) Decision {
-	if ctx.Err() != nil || !validKey(key) {
-		return c.Evaluate(ctx, key, fallback, Subject{})
+	decision := c.Snapshot().Resolve(ctx, key, fallback, target)
+	c.evaluations.Add(1)
+	if decision.Err != nil {
+		c.fallbacks.Add(1)
 	}
-	owned, err := target.Clone()
-	if err != nil {
-		return Decision{Value: fallback, Reason: ReasonError, Err: err}
-	}
-	attributes := make(map[string]string)
-	for key, value := range owned.Attributes {
-		if text, ok := value.(string); ok {
-			attributes[key] = text
-		}
-	}
-	return c.Evaluate(ctx, key, fallback, Subject{Key: owned.Key, Attributes: attributes})
+	return decision
 }

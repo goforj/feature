@@ -4,7 +4,7 @@ The root module has a Go 1.24 minimum and no external requirements. Optional Lau
 
 ## Scope and implementation decision
 
-The initial workflow is a local boolean decision with exact targeting, stable percentages, complete immutable snapshots, and explicit live refresh. Memory and regular-file JSON sources are the complete initial source catalog. No framework packages or deployment services are required.
+The initial workflow is a local typed decision with exact targeting, stable percentages, complete immutable snapshots, and explicit live refresh. Native sources include memory, regular files, HTTP, and application-owned SourceFunc adapters. No framework packages or deployment services are required.
 
 The native evaluator has no external runtime dependencies. The [provider study](provider-study.md) informed the portable facade and optional direct LaunchDarkly and OpenFeature drivers. The adapters enforce exact full runtime unit coverage and have a separate required service integration suite. No claim of hosted-provider interchangeability or OpenFeature specification conformance is made. See the [verification record](verification.md) for executed checks and remaining boundaries.
 

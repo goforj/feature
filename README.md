@@ -20,7 +20,7 @@
 <thead><tr><th align="left" width="38%">Feature</th><th align="left">What you get</th></tr></thead>
 <tbody>
 <tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Typed flags</td><td valign="middle">Boolean, string, integer, float, and object values with explicit fallbacks and ordered rules.</td></tr>
-<tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Consistent assignment per identity, flag, and salt.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Stable percentages, named variants, weighted splits, and scheduled or progressive rules.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/snapshot.svg" width="18" height="18" alt="" align="absmiddle"> Immutable snapshots</td><td valign="middle">One captured revision for every decision in a request or job.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/refresh.svg" width="18" height="18" alt="" align="absmiddle"> Live refresh</td><td valign="middle">Publish complete valid documents; retain the last valid snapshot after failures.</td></tr>
 </tbody>
@@ -65,12 +65,14 @@ fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject
 
 ## Available sources
 
-Both sources are included in the root module:
+Native sources are included in the root module:
 
 | Source | Scope | Updates |
 | :--- | :--- | :--- |
 | MemorySource | One process, no persistence | Replace the document, then refresh clients. |
 | FileSource | A regular local JSON file or symlink | Read the path on refresh, including atomic file replacement. |
+| HTTPSource | An explicit HTTP endpoint | Bounded complete-document retrieval with caller-owned refresh. |
+| SourceFunc | Storage services or another configuration model | Application-owned complete-document retrieval and conversion. |
 
 Source configuration is explicit. The library does not read or modify `.env`, start a global client, or require a flag-management service. See the [versioned JSON contract](docs/contract.md) for targeting rules, limits, failure behavior, and multi-process consistency.
 
@@ -93,6 +95,9 @@ Run from the repository root:
 go -C examples run ./quickstart   # Identity targeting and explicit fallback.
 go -C examples run ./portable     # Portable checks and typed request targeting.
 go -C examples run ./typed        # Typed values and explicit fallbacks.
+go -C examples run ./rules        # Typed targeting, variants, and timed rollouts.
+go -C examples run ./events       # Observability, tracking, and change subscriptions.
+go -C examples run ./http         # HTTP configuration and webhook delivery.
 go -C examples run ./native-provider # Native engine through an ordinary OpenFeature SDK.
 go -C examples run ./targeting    # Attributes and stable percentage rollout.
 go -C examples run ./refresh      # File replacement and request snapshots.
@@ -107,7 +112,7 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 
 ## How it works
 
-- **Local decisions:** evaluations perform no I/O. Rules match in order; otherwise the configured default applies.
+- **Local decisions:** the native evaluator reads local snapshots. Optional observers and SDK providers follow their configured I/O policy. Rules match in order; otherwise the configured default applies.
 - **Explicit fallback:** missing flags, invalid inputs, or canceled evaluations use the caller's fallback. Evaluate explains the result.
 - **Complete publication:** refresh validates a full document before publishing one immutable revision.
 - **Failure retention:** refresh failures retain the previous revision. Initial load failures prevent construction.
@@ -119,6 +124,10 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 | ---: | :--- |
 | **Portable evaluation** | [New](#api-new) · [Features.For](#api-features.for) · [Features.Enabled](#api-features.enabled) · [Scope.Evaluate](#api-scope.evaluate) |
 | **Typed evaluation** | [Features.String](#api-features.string) · [Features.Int](#api-features.int) · [Features.Float](#api-features.float) · [Features.Object](#api-features.object) |
+| **Native rules** | [WithClock](#api-withclock) |
+| **Observability** | [WithEventSink](#api-witheventsink) · [WithObserver](#api-withobserver) · [Features.SupportsTracking](#api-features.supportstracking) · [Features.Track](#api-features.track) · [Scope.Track](#api-scope.track) |
+| **Changes** | [Subscribe](#api-subscribe) |
+| **HTTP** | [NewHTTPSource](#api-newhttpsource) · [NewHTTPExporter](#api-newhttpexporter) · [WithNotifier](#api-withnotifier) |
 | **LaunchDarkly** | [launchdarklyfeature.New](#api-launchdarklyfeature.new) · [launchdarklyfeature.Open](#api-launchdarklyfeature.open) |
 | **OpenFeature** | [openfeaturefeature.Open](#api-openfeaturefeature.open) · [openfeaturefeature.New](#api-openfeaturefeature.new) · [openfeaturefeature.NewProvider](#api-openfeaturefeature.newprovider) |
 | **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
@@ -194,6 +203,160 @@ fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
 fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
 // Columns: 2
+```
+
+## Native rules
+
+<a id="api-withclock"></a>
+
+### WithClock
+
+WithClock supplies evaluation time for scheduled rules and deterministic application tests. The clock must be non-nil, local, and safe for concurrent calls.
+
+```go
+engine, err := feature.Open(ctx, source, feature.WithClock(func() time.Time { return now }))
+if err != nil {
+	panic(err)
+}
+target := feature.Target{Key: "tenant:acme", Attributes: map[string]any{"paid": true, "seats": 12}}
+flags := feature.New(engine).For(target)
+fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
+// Paid tenant theme: green
+request := feature.New(engine.Snapshot()).For(target)
+now = start
+fmt.Println("Scheduled launch:", flags.Enabled(ctx, "launch"))
+// Scheduled launch: true
+now = end
+fmt.Println("Rollout at completion:", flags.Enabled(ctx, "rollout"))
+// Rollout at completion: true
+fmt.Println("Captured request launch:", request.Enabled(ctx, "launch"))
+// Captured request launch: false
+```
+
+## Observability
+
+<a id="api-witheventsink"></a>
+
+<a id="api-withobserver"></a>
+
+<a id="api-features.supportstracking"></a>
+
+<a id="api-features.track"></a>
+
+<a id="api-scope.track"></a>
+
+### WithEventSink · WithObserver · Features.SupportsTracking · Features.Track · Scope.Track
+
+WithEventSink attaches application-owned analytics to the native engine.
+
+WithObserver attaches an application-owned observer without logging values or identities.
+
+SupportsTracking reports configured tracking support, including native sink selection. Borrowed OpenFeature clients can report SDK submission support without proving provider delivery.
+
+Track submits an untargeted custom event through the configured capability.
+
+Track submits a custom event with the scope's owned request targeting.
+
+```go
+engine, err := feature.Open(ctx, source, feature.WithEventSink(sink))
+if err != nil {
+	panic(err)
+}
+flags := feature.New(engine, feature.WithObserver(feature.ObserverFunc(func(context.Context, feature.Observation) { observations++ })))
+fmt.Println("Tracking configured:", flags.SupportsTracking())
+// Tracking configured: true
+if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
+	panic(err)
+}
+// Tracked: checkout
+if err := flags.For(feature.Target{Key: "tenant:acme"}).Track(ctx, "purchase", feature.Event{Attributes: map[string]any{"currency": "USD"}}); err != nil {
+	panic(err)
+}
+// Tracked: purchase
+fmt.Println("Observed operations:", observations)
+// Observed operations: 2
+subscription, err := engine.Subscribe()
+if err != nil {
+	panic(err)
+}
+defer subscription.Close()
+<-subscription.Changes
+```
+
+## Changes
+
+<a id="api-subscribe"></a>
+
+### Subscribe
+
+Subscribe captures current health and future changes without starting a goroutine.
+
+```go
+engine, err := feature.Open(ctx, source, feature.WithEventSink(sink))
+if err != nil {
+	panic(err)
+}
+flags := feature.New(engine, feature.WithObserver(feature.ObserverFunc(func(context.Context, feature.Observation) { observations++ })))
+fmt.Println("Tracking configured:", flags.SupportsTracking())
+// Tracking configured: true
+if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
+	panic(err)
+}
+// Tracked: checkout
+if err := flags.For(feature.Target{Key: "tenant:acme"}).Track(ctx, "purchase", feature.Event{Attributes: map[string]any{"currency": "USD"}}); err != nil {
+	panic(err)
+}
+// Tracked: purchase
+fmt.Println("Observed operations:", observations)
+// Observed operations: 2
+subscription, err := engine.Subscribe()
+if err != nil {
+	panic(err)
+}
+defer subscription.Close()
+<-subscription.Changes
+```
+
+## HTTP
+
+<a id="api-newhttpsource"></a>
+
+<a id="api-newhttpexporter"></a>
+
+<a id="api-withnotifier"></a>
+
+### NewHTTPSource · NewHTTPExporter · WithNotifier
+
+NewHTTPSource captures explicit request policy without I/O or background workers.
+
+NewHTTPExporter captures bounded delivery policy for analytics and change webhooks.
+
+WithNotifier attaches a bounded, application-owned native change destination.
+
+```go
+source, err := feature.NewHTTPSource(feature.HTTPConfig{URL: server.URL})
+if err != nil {
+	panic(err)
+}
+exporter, err := feature.NewHTTPExporter(feature.ExporterConfig{HTTP: feature.HTTPConfig{URL: server.URL}})
+if err != nil {
+	panic(err)
+}
+engine, err := feature.Open(ctx, source, feature.WithNotifier(exporter), feature.WithEventSink(exporter))
+if err != nil {
+	panic(err)
+}
+flags := feature.New(engine, feature.WithObserver(exporter))
+fmt.Println("Remote theme:", flags.String(ctx, "theme", "classic").Value)
+// Remote theme: blue
+if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
+	panic(err)
+}
+if err := exporter.LastError(); err != nil {
+	panic(err)
+}
+fmt.Println("Accepted events:", accepted.Load())
+// Accepted events: 4
 ```
 
 ## LaunchDarkly

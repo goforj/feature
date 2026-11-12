@@ -10,19 +10,20 @@ import (
 
 // Source supplies a full document; Client serializes calls to the borrowed source.
 // Implementations must honor cancellation, must not mutate returned data during
-// Refresh, and must not call back into the owning client's Refresh or Status.
+// Refresh, and must not call back into the owning client's Refresh.
 type Source interface {
 	Load(context.Context) (Document, error)
 }
 
 // Status reports process-local freshness and bounded aggregate evaluation counts.
 type Status struct {
-	Revision    string
-	LastAttempt time.Time
-	LastSuccess time.Time
-	LastError   error
-	Evaluations uint64
-	Fallbacks   uint64
+	Revision        string
+	LastAttempt     time.Time
+	LastSuccess     time.Time
+	LastError       error
+	LastNotifyError error
+	Evaluations     uint64
+	Fallbacks       uint64
 }
 
 // Client owns immutable snapshots and borrows a required Source without closing it.
@@ -36,11 +37,19 @@ type Client struct {
 	status      Status
 	evaluations atomic.Uint64
 	fallbacks   atomic.Uint64
+	clock       func() time.Time
+	notifier    Notifier
+	tracker     Tracker
+	subscribers map[chan Change]bool
 }
 
 // Open loads and validates the initial document synchronously without starting workers.
-func Open(ctx context.Context, source Source) (*Client, error) {
-	client := &Client{source: source, gate: make(chan struct{}, 1)}
+func Open(ctx context.Context, source Source, options ...ClientOption) (*Client, error) {
+	config := clientConfig{clock: time.Now}
+	for _, option := range options {
+		option(&config)
+	}
+	client := &Client{source: source, gate: make(chan struct{}, 1), clock: config.clock, notifier: config.notifier, tracker: config.tracker, subscribers: map[chan Change]bool{}}
 	if err := client.Refresh(ctx); err != nil {
 		return nil, err
 	}
@@ -49,7 +58,7 @@ func Open(ctx context.Context, source Source) (*Client, error) {
 
 // Snapshot captures the complete current revision without waiting for source I/O.
 func (c *Client) Snapshot() *View {
-	return &View{state: c.state.Load()}
+	return &View{state: c.state.Load(), at: c.clock()}
 }
 
 // Enabled returns a local decision and counts fallback failures without recording keys.
@@ -84,6 +93,7 @@ func (c *Client) Refresh(ctx context.Context) error {
 		return err
 	}
 	attempt := time.Now()
+	previous := c.state.Load()
 	doc, err := c.source.Load(ctx)
 	if err != nil {
 		if errors.Is(err, ErrInvalidDocument) {
@@ -104,6 +114,7 @@ func (c *Client) Refresh(ctx context.Context) error {
 		err = ctx.Err()
 	}
 	c.mu.Lock()
+	previousError := c.status.LastError
 	c.status.LastAttempt = attempt
 	c.status.LastError = err
 	if err == nil {
@@ -111,6 +122,18 @@ func (c *Client) Refresh(ctx context.Context) error {
 		c.status.Revision = c.state.Load().revision
 	}
 	c.mu.Unlock()
+	next := c.state.Load()
+	if previous == nil || previous.revision != next.revision || previousError != err {
+		change := Change{Err: err}
+		if previous != nil {
+			change.PreviousRevision = previous.revision
+		}
+		if next != nil {
+			change.Revision = next.revision
+			change.Keys = changedKeys(previous, next)
+		}
+		c.publishChange(ctx, change)
+	}
 	return err
 }
 

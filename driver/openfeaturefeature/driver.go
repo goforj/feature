@@ -29,11 +29,12 @@ type evaluationAPI interface {
 // Driver preserves the configured SDK's behavior and supports concurrent use.
 // A generic provider can perform network I/O and does not imply frozen snapshots.
 type Driver struct {
-	client   Client
-	close    func(context.Context) error
-	closed   atomic.Bool
-	once     sync.Once
-	closeErr error
+	client              Client
+	close               func(context.Context) error
+	closed              atomic.Bool
+	once                sync.Once
+	closeErr            error
+	trackingUnavailable bool
 }
 
 // New borrows an initialized SDK client without changing provider bindings or lifecycle.
@@ -69,7 +70,11 @@ func open(ctx context.Context, provider openfeature.FeatureProvider, api evaluat
 		}
 		return nil, feature.ErrUnavailable
 	}
-	return &Driver{client: api.NewClient(), close: api.Shutdown}, nil
+	_, tracking := provider.(openfeature.Tracker)
+	if capability, ok := provider.(interface{ SupportsTracking() bool }); ok {
+		tracking = tracking && capability.SupportsTracking()
+	}
+	return &Driver{client: api.NewClient(), close: api.Shutdown, trackingUnavailable: !tracking}, nil
 }
 
 // Close disables the adapter once and closes only the isolated API owned by Open.

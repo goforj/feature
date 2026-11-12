@@ -20,7 +20,7 @@
 <thead><tr><th align="left" width="38%">Feature</th><th align="left">What you get</th></tr></thead>
 <tbody>
 <tr><td width="38%" valign="middle"><img src="docs/assets/check.svg" width="18" height="18" alt="" align="absmiddle"> Typed flags</td><td valign="middle">Boolean, string, integer, float, and object values with explicit fallbacks and ordered rules.</td></tr>
-<tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Consistent assignment per identity, flag, and salt.</td></tr>
+<tr><td width="38%" valign="middle"><img src="docs/assets/rollout.svg" width="18" height="18" alt="" align="absmiddle"> Stable rollouts</td><td valign="middle">Stable percentages, named variants, weighted splits, and scheduled or progressive rules.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/snapshot.svg" width="18" height="18" alt="" align="absmiddle"> Immutable snapshots</td><td valign="middle">One captured revision for every decision in a request or job.</td></tr>
 <tr><td width="38%" valign="middle"><img src="docs/assets/refresh.svg" width="18" height="18" alt="" align="absmiddle"> Live refresh</td><td valign="middle">Publish complete valid documents; retain the last valid snapshot after failures.</td></tr>
 </tbody>
@@ -44,12 +44,14 @@ The example constructs an injected client, then enables checkout for a selected 
 
 ## Available sources
 
-Both sources are included in the root module:
+Native sources are included in the root module:
 
 | Source | Scope | Updates |
 | :--- | :--- | :--- |
 | MemorySource | One process, no persistence | Replace the document, then refresh clients. |
 | FileSource | A regular local JSON file or symlink | Read the path on refresh, including atomic file replacement. |
+| HTTPSource | An explicit HTTP endpoint | Bounded complete-document retrieval with caller-owned refresh. |
+| SourceFunc | Storage services or another configuration model | Application-owned complete-document retrieval and conversion. |
 
 Source configuration is explicit. The library does not read or modify `.env`, start a global client, or require a flag-management service. See the [versioned JSON contract](docs/contract.md) for targeting rules, limits, failure behavior, and multi-process consistency.
 
@@ -72,6 +74,9 @@ Run from the repository root:
 go -C examples run ./quickstart   # Identity targeting and explicit fallback.
 go -C examples run ./portable     # Portable checks and typed request targeting.
 go -C examples run ./typed        # Typed values and explicit fallbacks.
+go -C examples run ./rules        # Typed targeting, variants, and timed rollouts.
+go -C examples run ./events       # Observability, tracking, and change subscriptions.
+go -C examples run ./http         # HTTP configuration and webhook delivery.
 go -C examples run ./native-provider # Native engine through an ordinary OpenFeature SDK.
 go -C examples run ./targeting    # Attributes and stable percentage rollout.
 go -C examples run ./refresh      # File replacement and request snapshots.
@@ -86,7 +91,7 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 
 ## How it works
 
-- **Local decisions:** evaluations perform no I/O. Rules match in order; otherwise the configured default applies.
+- **Local decisions:** the native evaluator reads local snapshots. Optional observers and SDK providers follow their configured I/O policy. Rules match in order; otherwise the configured default applies.
 - **Explicit fallback:** missing flags, invalid inputs, or canceled evaluations use the caller's fallback. Evaluate explains the result.
 - **Complete publication:** refresh validates a full document before publishing one immutable revision.
 - **Failure retention:** refresh failures retain the previous revision. Initial load failures prevent construction.

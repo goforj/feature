@@ -6,7 +6,7 @@ The standalone library includes native memory/file evaluation, a portable typed 
 
 ## Executed checks
 
-The runtime unit gate requires exact **100% statement coverage** across the root and both driver modules. It runs all seven canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the current covered and total statement counts, source fingerprint, toolchain, and actual case count.
+The runtime unit gate requires exact **100% statement coverage** across the root and both driver modules. It runs all twelve canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the current covered and total statement counts, source fingerprint, toolchain, and actual case count.
 
 The [integration evidence](integration-results.json) records the current passing cases with race detection. Real, digest-pinned GO Feature Flag and official LaunchDarkly Relay containers serve the SDKs. Tests verify both running versions, a ten-case boolean contract across five configurations and an eight-case typed contract across six configurations, real container pause/resume, rejected credentials and initialization, typed attributes, malformed HTTP success, in-flight cancellation, updates, deletion and recreation, and shutdown. Successful false updates are checked with an opposing fallback and no evaluation error. File tests preserve coherent request snapshots during concurrent refresh and recover after malformed documents and deletion.
 
@@ -29,7 +29,7 @@ The adapter-only checks did not force-upgrade the root, so they also validate ea
 
 ## Review findings
 
-- Compatibility: native Subject retains string attributes. Source, snapshot, schema 1, stable rollout encoding, and revision behavior remain intact. Typed SDK targeting uses the additive Target type. Vendor dependencies and higher Go minimums stay in optional modules. The combined example catalog uses Go 1.26 without raising the native minimum.
+- Compatibility: native Subject retains string attributes. Source, snapshot, schema 1, stable rollout encoding, and revision behavior remain intact. Typed targeting uses Target; schema 2 adds typed native conditions and value models. Flag.Default and Rule.Value now accept any supported type as part of the unreleased API expansion. Vendor dependencies and higher Go minimums stay in optional modules. The combined example catalog uses Go 1.26 without raising the native minimum.
 - Provider semantics: Source.Load remains a complete native-document boundary. Adapters evaluate through actual SDKs, preserving rules, hooks, context merging, and configured off-variations. A targeting scope does not claim a frozen vendor revision. Provider rollout assignments and freshness are not portable guarantees.
 - Ownership and resources: scopes clone bounded target data. SDK constructors explicitly borrow or own. Startup failures clean up owned resources. Integration fixtures own services once per package run, clean partial starts, and fail rather than skip missing Docker.
 - Failure safety: structured errors preserve explicit fallbacks and safe classifications rather than upstream diagnostics. Refresh retains valid native snapshots. Outages and malformed responses are tested separately from missing flags.

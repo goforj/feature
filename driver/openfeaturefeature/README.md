@@ -19,3 +19,5 @@ INTEGRATION_RUN='TestDriverConformance/openfeature|TestRelay|TestOpenFeature' ma
 ```
 
 Tests verify real SDK hooks, context merging, updates, lifecycle, and independent bindings alongside controlled error boundaries. Service-backed provider tests belong in the integration module. Hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.
+
+NewProvider forwards native revision changes and stale/ready transitions through the SDK event channel. It also forwards custom tracking to an explicitly configured native event sink. SupportsTracking reports known support; an owned adapter returns ErrUnsupported for a provider known to lack tracking. Borrowed clients can only establish SDK submission capability. OpenFeature Track has no error result, so observe native sink failures through WithObserver when needed. The [capability matrix](../../docs/capabilities.md) records pinned provider limitations, including custom tracking and numeric metrics.

@@ -29,6 +29,12 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 		events = append(events, data...)
 		events = append(events, '\n')
 	}
+	for _, name := range []string{"TestLaunchDarklyCustomTracking", "TestOpenFeatureLaunchDarklyTrackingCapability", "TestGOFeatureFlagCustomTracking/REMOTE", "TestGOFeatureFlagCustomTracking/INPROCESS"} {
+		add(name)
+	}
+	for _, scenario := range []string{"typed-conditions", "calendar-snapshot", "weighted-variants", "custom-analytics", "refresh-and-notification", "last-valid-retention", "notification-failure-isolation"} {
+		add("TestNativeHTTPModelWorkflow/" + scenario)
+	}
 	for _, name := range []string{"native", "openfeature-native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
 		for _, scenario := range []string{"string", "integer", "float", "object", "wrong-type", "missing", "canceled", "live-update"} {
 			add("TestTypedDriverConformance/" + name + "/" + scenario)
@@ -63,7 +69,7 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 			add("TestLaunchDarklyRelayContexts/" + adapter + "/" + scenario)
 		}
 	}
-	if count, err := integrationCases(events, true); count != 120 || err != nil {
+	if count, err := integrationCases(events, true); count != 131 || err != nil {
 		t.Fatal(count, err)
 	}
 	for _, name := range []string{"native", "launchdarkly", "openfeature-launchdarkly", "openfeature-goff-remote", "openfeature-goff-inprocess"} {
