@@ -272,6 +272,7 @@ fmt.Println("Refresh healthy:", status.LastError == nil && !status.LastSuccess.I
 make test-unit       # Execute tests and examples; require exact library coverage.
 make test-race       # Include race instrumentation in executable examples.
 make vet
+make record-unit     # Refresh tracked evidence after relevant source changes.
 make generate
 make check-generated
 ```

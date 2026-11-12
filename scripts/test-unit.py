@@ -51,6 +51,7 @@ if not statements or covered != statements:
     subprocess.run(['go', 'tool', 'cover', '-func=' + str(artifacts / 'unit.cover')], cwd=ROOT)
     sys.exit(1)
 report = {
+    'go_version': subprocess.check_output(['go', 'version'], env=env, text=True).strip(),
     'scope': 'github.com/goforj/feature runtime package; tooling and executable scaffolding are not runtime library code',
     'source_fingerprint': fingerprint(),
     'statements': statements,
@@ -58,5 +59,8 @@ report = {
     'passed_tests': sum(e.get('Action') == 'pass' and bool(e.get('Test')) for e in events),
     'executed_programs': len(list((ROOT / 'examples').glob('*/main.go'))),
 }
-(ROOT / 'docs' / 'unit-results.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+serialized = json.dumps(report, indent=2, sort_keys=True) + '\n'
+(artifacts / 'unit-results.json').write_text(serialized)
+if '--record' in sys.argv:
+    (ROOT / 'docs' / 'unit-results.json').write_text(serialized)
 print(f'Passed {report["passed_tests"]} test cases and {report["executed_programs"]} programs; {covered}/{statements} library statements covered.')

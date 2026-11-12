@@ -1,10 +1,13 @@
-.PHONY: test test-unit test-race test-coverage vet tidy modules-check generate check-generated test-tools
+.PHONY: test test-unit record-unit test-race test-coverage vet tidy modules-check generate check-generated test-tools
 
 test:
 	go test ./...
 
 test-unit:
 	python3 scripts/test-unit.py
+
+record-unit:
+	python3 scripts/test-unit.py --record
 
 test-coverage: test-unit
 

@@ -7,7 +7,7 @@ This repository owns the standalone feature flag library. Framework components, 
 - Treat schema 1 and stable rollout encoding as compatibility contracts. Add regression coverage for every new validation branch and failure mode.
 - Source errors must not reveal paths, targeting identities, attributes, or source contents.
 - Required sources fail visibly when miswired. Do not hide nil dependencies behind fallback behavior.
-- GoDoc owns API descriptions; examples/*/main.go owns executable snippets and expected output. Update those sources, then run make test-unit generate test-tools check-generated.
+- GoDoc owns API descriptions; examples/*/main.go owns executable snippets and expected output. Update those sources, then run make record-unit generate test-tools check-generated.
 - Keep exact runtime library unit statement coverage at 100%. Preserve coverage and race instrumentation in executable example subprocesses.
 - Run make test-race vet modules-check for relevant changes. Discover every go.mod before adding modules; the initial repository has only one.
 - All Go functions and exported entities need name-leading doc comments. Avoid import aliases and em dashes.

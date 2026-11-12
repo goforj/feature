@@ -17,6 +17,7 @@ Run from the repository root:
 ```sh
 make test
 make test-unit
+make record-unit # Refresh tracked evidence after relevant source changes.
 make test-race
 make vet
 make test-tools
@@ -28,7 +29,7 @@ make check-generated
 
 Tests use real temporary files for native file-source behavior. There is no service-backed driver or separate service integration suite. Memory and file source behavior, including failure recovery, is exercised in ordinary unit tests. Linux CI and local macOS runs execute the same suite; CI also verifies the minimum Go line.
 
-The unit runner executes Go tests and all canonical example programs, instruments example subprocesses against the root library package, and merges their coverage. It requires exact coverage of every statement in the runtime library package. Program scaffolding and Python build tooling are validated separately rather than represented as covered runtime code. Executed case counts, covered statement counts, and source fingerprint are generated in docs/unit-results.json. No integration run supplies missing unit coverage.
+The unit runner executes Go tests and all canonical example programs, instruments example subprocesses against the root library package, and merges their coverage. It requires exact coverage of every statement in the runtime library package. Program scaffolding and Python build tooling are validated separately rather than represented as covered runtime code. Each run writes executed case counts, covered statement counts, toolchain identity, and source fingerprint under .artifacts. Use make record-unit to update docs/unit-results.json deliberately after source changes. Statement totals can differ between Go versions; every run must independently achieve exact full coverage without rewriting evidence recorded on another toolchain. No integration run supplies missing unit coverage.
 
 GoDoc owns API descriptions. examples/*/main.go owns snippets and checked expected output. docs/README.tmpl.md owns the surrounding presentation. tools/generate.py checks API names, associated calls, snippet boundaries, and current unit evidence, then generates README.md and status badges. Regeneration twice must preserve the bytes. Never edit the generated README to repair a source issue.
 
