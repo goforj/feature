@@ -282,6 +282,25 @@ func TestFailedCreationKeepsCancellation(t *testing.T) {
 	}
 }
 
+// TestOfflineSDKRemainsUsable preserves native offline readiness and explicit fallbacks without a service connection.
+func TestOfflineSDKRemainsUsable(t *testing.T) {
+	driver, err := Open(context.Background(), Config{SDKKey: "offline-test", SDKConfig: ldclient.Config{Offline: true, Logging: ldcomponents.NoLogging()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := driver.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, fallback := range []bool{false, true} {
+		d := driver.Resolve(context.Background(), "checkout", fallback, feature.Target{Key: "user:offline"})
+		if d.Value != fallback || d.Err != feature.ErrUnavailable || d.Reason != feature.ReasonError {
+			t.Fatal(d)
+		}
+	}
+}
+
 // TestOfficialSDKThroughOwnedDriver exercises the actual engine and live updates without cloud credentials.
 func TestOfficialSDKThroughOwnedDriver(t *testing.T) {
 	ctx := context.Background()

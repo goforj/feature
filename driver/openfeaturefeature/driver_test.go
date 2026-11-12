@@ -272,6 +272,87 @@ func TestRealSDKHooksContextsAndUpdates(t *testing.T) {
 	}
 }
 
+// TestBorrowedSDKContextInheritance preserves the SDK's identity precedence when an invocation omits its key.
+func TestBorrowedSDKContextInheritance(t *testing.T) {
+	ctx := context.Background()
+	api := isolated.NewAPI()
+	t.Cleanup(func() {
+		if err := api.Shutdown(ctx); err != nil {
+			t.Error(err)
+		}
+	})
+	wantKey, wantWinner := "api-user", "api"
+	evaluate := func(_ memprovider.InMemoryFlag, target openfeature.FlattenedContext) (any, openfeature.ProviderResolutionDetail) {
+		return target[openfeature.TargetingKey] == wantKey && target["winner"] == wantWinner, openfeature.ProviderResolutionDetail{Reason: openfeature.TargetingMatchReason}
+	}
+	provider := memprovider.NewInMemoryProvider(map[string]memprovider.InMemoryFlag{"checkout": {
+		Key: "checkout", State: memprovider.Enabled, DefaultVariant: "on", Variants: map[string]any{"on": true}, ContextEvaluator: &evaluate,
+	}})
+	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+		t.Fatal(err)
+	}
+	api.SetEvaluationContext(openfeature.NewEvaluationContext(wantKey, map[string]any{"winner": wantWinner}))
+	sdk := api.NewClient()
+	driver := New(sdk)
+	t.Cleanup(func() {
+		if err := driver.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	flags := feature.New(driver)
+	if !flags.Enabled(ctx, "checkout") {
+		t.Fatal("API identity was discarded")
+	}
+	wantKey, wantWinner = "transaction-user", "transaction"
+	transaction := openfeature.WithTransactionContext(ctx, openfeature.NewEvaluationContext(wantKey, map[string]any{"winner": wantWinner}))
+	if !flags.Enabled(transaction, "checkout") {
+		t.Fatal("transaction identity was discarded")
+	}
+	wantKey, wantWinner = "client-user", "client"
+	sdk.SetEvaluationContext(openfeature.NewEvaluationContext(wantKey, map[string]any{"winner": wantWinner}))
+	if !flags.Enabled(transaction, "checkout") {
+		t.Fatal("client identity precedence changed")
+	}
+	if !flags.For(feature.Target{Attributes: map[string]any{"targetingKey": "cannot-override"}}).Enabled(transaction, "checkout") {
+		t.Fatal("reserved attribute overrode the inherited identity")
+	}
+	wantKey, wantWinner = "invocation-user", "invocation"
+	if !flags.For(feature.Target{Key: wantKey, Attributes: map[string]any{"winner": wantWinner}}).Enabled(transaction, "checkout") {
+		t.Fatal("explicit invocation identity lost precedence")
+	}
+}
+
+// TestFailedBindingDoesNotCloseExistingProvider verifies failed ownership transfer leaves the original SDK API usable.
+func TestFailedBindingDoesNotCloseExistingProvider(t *testing.T) {
+	ctx := context.Background()
+	api := isolated.NewAPI()
+	provider := &lifecycleProvider{InMemoryProvider: memprovider.NewInMemoryProvider(map[string]memprovider.InMemoryFlag{"checkout": {
+		Key: "checkout", State: memprovider.Enabled, DefaultVariant: "on", Variants: map[string]any{"on": true},
+	}})}
+	t.Cleanup(func() {
+		if err := api.Shutdown(ctx); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+		t.Fatal(err)
+	}
+	driver, err := Open(ctx, provider)
+	if driver != nil {
+		_ = driver.Close()
+	}
+	if driver != nil || err != feature.ErrUnavailable {
+		t.Fatal("bound provider accepted by a second API", driver, err)
+	}
+	if provider.stops.Load() != 0 {
+		t.Fatal("failed registration shut down another API's provider")
+	}
+	value, err := api.NewClient().BooleanValue(ctx, "checkout", false, openfeature.NewTargetlessEvaluationContext(nil))
+	if !value || err != nil {
+		t.Fatal("original binding stopped working", value, err)
+	}
+}
+
 // lifecycleProvider exposes native SDK initialization and shutdown observations.
 type lifecycleProvider struct {
 	*memprovider.InMemoryProvider

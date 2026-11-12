@@ -114,6 +114,10 @@ func TestIntegration(root string, record bool, output io.Writer) error {
 	if filter != "" && record {
 		return errors.New("focused integration runs cannot overwrite complete evidence")
 	}
+	initialFingerprint, err := IntegrationFingerprint(root)
+	if err != nil {
+		return err
+	}
 	artifacts := filepath.Join(root, ".artifacts")
 	if err := os.MkdirAll(artifacts, 0755); err != nil {
 		return err
@@ -148,13 +152,16 @@ func TestIntegration(root string, record bool, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if filter != "" {
-		fmt.Fprintf(output, "Passed %d focused integration cases; full-run evidence preserved.\n", passed)
-		return nil
-	}
 	fingerprint, err := IntegrationFingerprint(root)
 	if err != nil {
 		return err
+	}
+	if fingerprint != initialFingerprint {
+		return errors.New("source changed during integration verification; rerun against a stable source tree")
+	}
+	if filter != "" {
+		fmt.Fprintf(output, "Passed %d focused integration cases; full-run evidence preserved.\n", passed)
+		return nil
 	}
 	versions, err := os.ReadFile(filepath.Join(root, "integration", "versions.json"))
 	if err != nil {

@@ -47,6 +47,16 @@ This follow-up passed all 87 required integration cases with race detection, exa
 
 Fresh independent native, LaunchDarkly, OpenFeature, and combined Git consumers passed against runtime commit `8e7a76c0f17b6e6e0e8cb3042a19de2f231ae9fa` without local replacements. These checks additionally exercised native validation precedence and accounting, actual invalid SDK TLS configuration, caller cancellation during a real SDK event-processor factory error, and repeated native OpenFeature provider cleanup failures. The standalone driver consumers retained their declared older root requirement, while native and combined consumers selected the reviewed root. Toolchain details are in verification.md. CI and Security passed for that runtime commit.
 
+## Further evidence and SDK boundary passes
+
+A self-mutating disposable module reproduced a tooling defect: the unit command could test the original binary, compile its example after a source edit, and report success with the new source fingerprint. Unit and integration verification now capture fingerprints before execution and reject observed changes before recording success. Direct command-boundary regressions exercise actual Go subprocesses that change their source during execution. Focused integration runs apply the same check. This detects changed final inputs; it does not provide a filesystem snapshot or detect edits reverted before the final fingerprint.
+
+Additional real-SDK regressions preserve OpenFeature API, transaction, client, and invocation context precedence, including inherited identities and reserved targeting attributes. A failed attempt to bind an already-owned provider must leave its original API working without shutting down that provider. LaunchDarkly offline construction must remain successful while evaluations return the caller's explicit fallback and the normalized unavailable error. These SDK checks passed ten repeated race runs without requiring runtime changes.
+
+The coverage inventory was also checked with a disposable unimported runtime package: its untested statements remain visible in Go's coverage profile. No additional exclusion or runtime API was needed. This pass changes verification tooling, tests, and documentation; runtime behavior, public signatures, configuration, dependencies, and Go minimums are preserved.
+
+This candidate passed 169 unit cases, all seven executable programs, 565/565 runtime statements, and all 87 separate integration cases with race detection. Module inventory, tidy parity, generated-document parity, race checks, and vet passed across the relevant modules. Native Go 1.24.13, LaunchDarkly Go 1.25.5, and OpenFeature Go 1.26.0 suites also passed with race detection.
+
 ## Documentation and distribution
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

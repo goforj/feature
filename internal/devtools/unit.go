@@ -97,6 +97,10 @@ func TestUnit(root string, record bool, output io.Writer) error {
 	if err := CheckModules(root); err != nil {
 		return err
 	}
+	initialFingerprint, err := Fingerprint(root)
+	if err != nil {
+		return err
+	}
 	artifacts := filepath.Join(root, ".artifacts")
 	coverage := filepath.Join(artifacts, "example-coverage")
 	if err := os.RemoveAll(coverage); err != nil {
@@ -184,6 +188,9 @@ func TestUnit(root string, record bool, output io.Writer) error {
 	fingerprint, err := Fingerprint(root)
 	if err != nil {
 		return err
+	}
+	if fingerprint != initialFingerprint {
+		return errors.New("source changed during unit verification; rerun against a stable source tree")
 	}
 	programs, err := filepath.Glob(filepath.Join(root, "examples", "*", "main.go"))
 	if err != nil {
