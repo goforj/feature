@@ -67,6 +67,12 @@ These passes found gaps in test assertions and behavioral coverage, without iden
 
 The candidate passed 176 unit cases, all seven executable programs, 565/565 runtime statements, and 92 separate integration cases with race detection. Module inventory, tidy parity, generated-document parity, race checks, and vet passed across the relevant modules. The native Go 1.24.13 race suite passed. Decoder fuzzing completed 9,075,206 executions in 46 seconds without a failure; this count includes rejected inputs as well as accepted-document round trips.
 
+## Further isolation and consumer guidance passes
+
+Rechecked native publication, strict JSON and target bounds, error redaction, SDK startup and shutdown ownership, and the consumer guidance. No additional runtime defect was found. The root and both driver module suites passed ten shuffled repetitions with race detection using seed 584271. The entire container integration suite passed three shuffled repetitions in one package process, exercising reuse of the same services and namespace isolation across repeated runs. These repetitions remain separate from the single-run tracked integration report.
+
+The independent unit gate again passed 176 cases, seven executable programs, and 565/565 runtime statements. Module inventory, maintenance-tool tests, generated-document parity, and vet passed. Consumer guides now state that direct LaunchDarkly requires an explicit identity, while OpenFeature can inherit configured SDK identity and leaves identity requirements to its provider. The verification overview now describes the current ten-case shared contract, including flag deletion and recreation. This pass changes documentation only.
+
 ## Documentation and distribution
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

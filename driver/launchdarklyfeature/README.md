@@ -6,6 +6,8 @@ Use New to borrow an initialized SDK client, or Open with Config to create an ow
 
 Target.Key is authoritative. Kind defaults to user. Typed attributes retain native SDK semantics; anonymous and privateAttributes use the vendor's explicit metadata conventions. A multi-kind target uses Kind multi and nested map[string]any identities with their own key fields. No identity kind is inferred from a key prefix. Native SDK numeric representation and targeting behavior remain authoritative.
 
+Direct LaunchDarkly checks require a nonempty Target.Key, or valid child keys in a multi-kind target. Use Features.For to supply that identity before checking a flag. Untargeted Features.Enabled returns its false fallback because an empty LaunchDarkly identity is invalid; Evaluate exposes ErrInvalidSubject with the caller's chosen fallback.
+
 Successful off-variations are preserved, including true values. Resolve returns a safe classified error, a reason, and a variation index when available; it does not fabricate a native document revision or frozen snapshot.
 
 Run from the repository checkout:

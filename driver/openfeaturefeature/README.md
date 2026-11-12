@@ -6,6 +6,8 @@ New borrows an initialized SDK client. Open owns a separate isolated API, regist
 
 Resolve calls the SDK client rather than calling a provider directly, preserving SDK hooks, context precedence, and configured provider behavior. Target.Key is authoritative over a reserved targetingKey attribute. Kind is an explicit kind attribute; structured attributes are forwarded without string coercion. Individual providers define how they interpret those fields and privacy metadata.
 
+An empty Target.Key allows identity to be inherited from the SDK's configured API, transaction, or client context. Providers decide whether an identity is required. Use Features.For when each request or job needs its own explicit identity and attributes.
+
 This adapter supports boolean evaluation. It is not a complete implementation of the OpenFeature specification, a guarantee of every provider's capabilities, or a promise that every evaluation is local. Providers can perform network I/O. Request targeting scopes do not freeze provider configuration.
 
 Run from the repository checkout:
