@@ -164,3 +164,23 @@ func TestRevisionNormalization(t *testing.T) {
 		t.Fatal("different decisions share revision")
 	}
 }
+
+// TestCompileBudgetAcrossFlags rejects aggregate growth independently of map iteration order.
+func TestCompileBudgetAcrossFlags(t *testing.T) {
+	doc := Document{Schema: 1, Flags: map[string]Flag{}}
+	for i := 0; i < MaxFlags; i++ {
+		key := fmt.Sprintf("%0128d", i)
+		doc.Flags[key] = Flag{}
+	}
+	subjects := make([]string, 700)
+	for i := range subjects {
+		subjects[i] = strings.Repeat("x", 64)
+	}
+	key := fmt.Sprintf("%0128d", 0)
+	doc.Flags[key] = Flag{Rules: []Rule{{Subjects: subjects}}}
+	for i := 0; i < 20; i++ {
+		if _, err := compile(doc); err != ErrInvalidDocument {
+			t.Fatal(err)
+		}
+	}
+}

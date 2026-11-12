@@ -96,6 +96,9 @@ func compile(doc Document) (*compiled, error) {
 			return nil, ErrInvalidDocument
 		}
 		budget += len(key)*6 + 64
+		if budget > MaxDocumentBytes {
+			return nil, ErrInvalidDocument
+		}
 		for _, rule := range flag.Rules {
 			if len(rule.Subjects) > MaxSubjects || !validAttributes(rule.Attributes) ||
 				(len(rule.Subjects) == 0 && len(rule.Attributes) == 0 && rule.Rollout == nil) {

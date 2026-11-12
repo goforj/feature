@@ -2,7 +2,9 @@ package feature
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -182,4 +184,38 @@ func FuzzDecode(f *testing.F) {
 			t.Fatal(err)
 		}
 	})
+}
+
+// TestDecodeStructuralBounds rejects excessive inventories before typed decoding allocates them.
+func TestDecodeStructuralBounds(t *testing.T) {
+	docs := []Document{}
+	flags := map[string]Flag{}
+	for i := 0; i <= MaxFlags; i++ {
+		flags[fmt.Sprint(i)] = Flag{}
+	}
+	docs = append(docs, Document{Schema: 1, Flags: flags})
+	attrs := map[string]string{}
+	for i := 0; i <= MaxAttributes; i++ {
+		attrs[fmt.Sprint(i)] = "a"
+	}
+	docs = append(docs, Document{Schema: 1, Flags: map[string]Flag{"test": {Rules: []Rule{{Attributes: attrs}}}}})
+	rules := make([]Rule, MaxRules+1)
+	for i := range rules {
+		rules[i] = Rule{Subjects: []string{"tenant"}}
+	}
+	docs = append(docs, Document{Schema: 1, Flags: map[string]Flag{"test": {Rules: rules}}})
+	subjects := make([]string, MaxSubjects+1)
+	for i := range subjects {
+		subjects[i] = "tenant"
+	}
+	docs = append(docs, Document{Schema: 1, Flags: map[string]Flag{"test": {Rules: []Rule{{Subjects: subjects}}}}})
+	for _, doc := range docs {
+		data, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Decode(data); err != ErrInvalidDocument {
+			t.Fatal(err)
+		}
+	}
 }

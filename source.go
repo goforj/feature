@@ -190,6 +190,9 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 				return ErrInvalidDocument
 			}
 			key := token.(string)
+			if kind == "flags" && len(seen) >= MaxFlags || kind == "attributes" && len(seen) >= MaxAttributes {
+				return ErrInvalidDocument
+			}
 			if seen[key] {
 				return ErrInvalidDocument
 			}
@@ -205,7 +208,12 @@ func scanJSON(decoder *json.Decoder, kind string, depth int) error {
 		_, err = decoder.Token()
 		return err
 	case json.Delim('['):
+		count := 0
 		for decoder.More() {
+			if kind == "rules" && count >= MaxRules || kind == "subjects" && count >= MaxSubjects {
+				return ErrInvalidDocument
+			}
+			count++
 			next := "scalar"
 			if kind == "rules" {
 				next = "rule"
