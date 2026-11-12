@@ -1,12 +1,16 @@
 {
-  "passed_tests": 70,
+  "passed_tests": 75,
   "go_version": "go version go1.27.4 darwin/arm64",
   "race": true,
-  "source_fingerprint": "7d0e577dd142824434ce71b83b60ce7c512c0d30b0541c89c80d9442cd7fd6d7",
+  "source_fingerprint": "0ee06f19656f70a87cd97f53c27f6587fb87795c00b766236c1e2b2910b9441b",
   "versions": {
     "go-feature-flag": {
       "version": "1.58.1",
       "image": "gofeatureflag/go-feature-flag:v1.58.1@sha256:07642044fc75a8ce4598e80bf626122ce25f03d3c7bf0b10a7828efeecea6dae"
+    },
+    "launchdarkly-relay": {
+      "version": "9.0.0",
+      "image": "launchdarkly/ld-relay:9.0.0@sha256:0ea7bd6f3c31f0fb3b406111dc1b7e2b6d8c4bcb798cefd16946ea6f5e53b901"
     },
     "launchdarkly-go-sdk": "v7.22.0",
     "openfeature-go-sdk": "v1.20.0",
@@ -14,5 +18,5 @@
     "openfeature-launchdarkly-provider": "v0.2.0",
     "testcontainers-go": "v0.39.0"
   },
-  "scope": "native files and memory; official LaunchDarkly SDK with local streaming/events protocol fixtures; OpenFeature SDK with LaunchDarkly and a real Docker GO Feature Flag relay in remote and in-process modes. No hosted LaunchDarkly account verification; no integration coverage used for the unit target."
+  "scope": "native files and memory; official LaunchDarkly SDK and OpenFeature LaunchDarkly provider through a real Docker LaunchDarkly Relay with a local FDv2 upstream fixture; real Docker GO Feature Flag relay in remote and in-process modes; SDK protocol failure fixtures. No hosted LaunchDarkly account verification; no integration coverage used for the unit target."
 }

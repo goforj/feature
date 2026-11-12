@@ -16,4 +16,4 @@ go -C examples run ./launchdarkly
 INTEGRATION_RUN='TestDriverConformance/launchdarkly|TestLaunchDarkly' make test-integration
 ```
 
-Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Local SDK and protocol verification are separate from hosted-account verification. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.
+Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Required integration tests additionally run through the official LaunchDarkly Relay Docker image, checking targeting, updates, authentication, analytics forwarding, and container outage recovery. Its upstream data plane is a local fixture, so hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.

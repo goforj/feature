@@ -89,6 +89,11 @@ func integrationCases(events []byte, full bool) (int, error) {
 				return 0, fmt.Errorf("missing integration test: %s", name)
 			}
 		}
+		for _, scenario := range []string{"configured-off-variation", "authentication", "container-outage-and-recovery", "analytics-on-close"} {
+			if !passed["TestLaunchDarklyRelay/"+scenario] {
+				return 0, fmt.Errorf("missing LaunchDarkly Relay integration: %s", scenario)
+			}
+		}
 	}
 	return len(passed), nil
 }
@@ -150,7 +155,7 @@ func TestIntegration(root string, record bool, output io.Writer) error {
 		return err
 	}
 	report := integrationReport{passed, strings.TrimSpace(string(version)), true, fingerprint, versions,
-		"native files and memory; official LaunchDarkly SDK with local streaming/events protocol fixtures; OpenFeature SDK with LaunchDarkly and a real Docker GO Feature Flag relay in remote and in-process modes. No hosted LaunchDarkly account verification; no integration coverage used for the unit target."}
+		"native files and memory; official LaunchDarkly SDK and OpenFeature LaunchDarkly provider through a real Docker LaunchDarkly Relay with a local FDv2 upstream fixture; real Docker GO Feature Flag relay in remote and in-process modes; SDK protocol failure fixtures. No hosted LaunchDarkly account verification; no integration coverage used for the unit target."}
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return err

@@ -80,8 +80,8 @@ The optional adapters keep vendor dependencies and Go requirements outside the r
 
 | Driver | Constructors | Minimum Go | Verification |
 | :--- | :--- | :--- | :--- |
-| [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Real SDK, local streaming and analytics, startup failures, and shutdown. |
-| [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | Real GO Feature Flag Docker service in remote and in-process modes, plus the LaunchDarkly provider. |
+| [LaunchDarkly](driver/launchdarklyfeature) | New borrows an SDK client; Open owns initialization and shutdown. | 1.25 | Official Relay Docker container, streaming, analytics forwarding, authentication, and outage recovery. |
+| [OpenFeature](driver/openfeaturefeature) | New borrows a client; Open owns an isolated API and provider. | 1.26 | GO Feature Flag Docker service in remote and in-process modes; LaunchDarkly provider through its official Relay container. |
 
 Every runtime module requires exact 100% unit statement coverage. The separate [integration suite](integration) checks real services and SDK transports with race detection; its [execution report](docs/integration-results.json) identifies tested versions and source. Hosted LaunchDarkly account verification remains pending. Features is the portable application API; native Client retains source refresh and genuine snapshots.
 

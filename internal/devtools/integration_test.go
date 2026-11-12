@@ -39,7 +39,13 @@ func TestIntegrationEvidenceRejectsIncompleteRuns(t *testing.T) {
 	for _, name := range []string{"TestFileRefreshLifecycle", "TestLaunchDarklyStreamingAndEvents", "TestLaunchDarklyStartupFailures", "TestLaunchDarklyBorrowedOwnership", "TestRelayAuthentication", "TestRelayContainerOutage", "TestRelayTransportFailures", "TestRelayTypedTargeting", "TestOpenFeatureSDKTypeMismatch"} {
 		add(name)
 	}
-	if count, err := integrationCases(events, true); count != 54 || err != nil {
+	if _, err := integrationCases(events, true); err == nil {
+		t.Fatal("missing vendor container verification accepted")
+	}
+	for _, scenario := range []string{"configured-off-variation", "authentication", "container-outage-and-recovery", "analytics-on-close"} {
+		add("TestLaunchDarklyRelay/" + scenario)
+	}
+	if count, err := integrationCases(events, true); count != 58 || err != nil {
 		t.Fatal(count, err)
 	}
 }

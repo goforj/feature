@@ -13,9 +13,9 @@ import (
 	"github.com/goforj/feature/driver/launchdarklyfeature"
 	"github.com/goforj/feature/driver/openfeaturefeature"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	"github.com/launchdarkly/go-server-sdk/v7"
-	"github.com/launchdarkly/go-server-sdk/v7/ldcomponents"
-	"github.com/launchdarkly/go-server-sdk/v7/testhelpers/ldtestdata"
 	"github.com/open-feature/go-sdk-contrib/providers/go-feature-flag/pkg"
 	"github.com/open-feature/go-sdk-contrib/providers/launchdarkly/pkg"
 	"github.com/open-feature/go-sdk/openfeature"
@@ -67,13 +67,14 @@ func newContractFixture(t *testing.T, name string) contractFixture {
 			}
 		}
 	case "launchdarkly", "openfeature-launchdarkly":
-		data := ldtestdata.DataSource()
-		data.Update(data.Flag(prefix + "true").BooleanFlag().VariationForAll(true))
-		data.Update(data.Flag(prefix + "false").BooleanFlag().VariationForAll(false))
-		data.Update(data.Flag(prefix + "update").BooleanFlag().VariationForAll(false))
-		data.Update(data.Flag(prefix+"identity").BooleanFlag().VariationForUser("tenant:allowed", true).FallthroughVariation(false))
-		data.Update(data.Flag(prefix+"attribute").BooleanFlag().IfMatch("plan", ldvalue.String("pro")).ThenReturn(true).FallthroughVariation(false))
-		config := launchdarklyfeature.Config{SDKKey: "goforj-public-integration-placeholder", SDKConfig: ldclient.Config{DataSource: data, Events: ldcomponents.NoEvents(), Logging: ldcomponents.NoLogging()}}
+		service := launchDarklyRelay(t)
+		service.publish(
+			relayFlag(prefix+"true", true).Build(), relayFlag(prefix+"false", false).Build(), relayFlag(prefix+"update", false).Build(),
+			relayFlag(prefix+"identity", false).AddTarget(1, "tenant:allowed").Build(),
+			relayFlag(prefix+"attribute", false).AddRule(ldbuilders.NewRuleBuilder().ID("plan").
+				Clauses(ldbuilders.Clause("plan", ldmodel.OperatorIn, ldvalue.String("pro"))).Variation(1)).Build(),
+		)
+		config := launchdarklyfeature.Config{SDKKey: evaluationKey, SDKConfig: service.sdkConfig()}
 		if name == "launchdarkly" {
 			driver, err := launchdarklyfeature.Open(ctx, config)
 			if err != nil {
@@ -106,7 +107,8 @@ func newContractFixture(t *testing.T, name string) contractFixture {
 			})
 			fixture.features = feature.New(driver)
 		}
-		fixture.change = func(value bool) { data.Update(data.Flag(prefix + "update").BooleanFlag().VariationForAll(value)) }
+		eventually(t, func() bool { return fixture.features.For(feature.Target{Key: "probe"}).Enabled(ctx, prefix+"true") })
+		fixture.change = func(value bool) { service.publish(relayFlag(prefix+"update", value).Build()) }
 	default:
 		service := relay(t)
 		service.update(t, map[string]any{

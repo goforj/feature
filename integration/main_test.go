@@ -43,9 +43,23 @@ var relayPool = struct {
 }{}
 var nextNamespace atomic.Uint64
 
-// TestMain always removes the shared service, including failures after partial startup.
+// TestMain always removes shared services, including failures after partial startup.
 func TestMain(m *testing.M) {
 	code := m.Run()
+	if launchDarklyPool.fixture.stop != nil {
+		close(launchDarklyPool.fixture.stop)
+	}
+	if launchDarklyPool.fixture.container != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		if err := launchDarklyPool.fixture.container.Terminate(ctx); err != nil {
+			fmt.Fprintln(os.Stderr, "LaunchDarkly container cleanup failed")
+			code = 1
+		}
+		cancel()
+	}
+	if launchDarklyPool.fixture.upstream != nil {
+		launchDarklyPool.fixture.upstream.Close()
+	}
 	if relayPool.fixture.container != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		if err := relayPool.fixture.container.Terminate(ctx); err != nil {

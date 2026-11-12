@@ -3,6 +3,10 @@
     "version": "1.58.1",
     "image": "gofeatureflag/go-feature-flag:v1.58.1@sha256:07642044fc75a8ce4598e80bf626122ce25f03d3c7bf0b10a7828efeecea6dae"
   },
+  "launchdarkly-relay": {
+    "version": "9.0.0",
+    "image": "launchdarkly/ld-relay:9.0.0@sha256:0ea7bd6f3c31f0fb3b406111dc1b7e2b6d8c4bcb798cefd16946ea6f5e53b901"
+  },
   "launchdarkly-go-sdk": "v7.22.0",
   "openfeature-go-sdk": "v1.20.0",
   "openfeature-go-feature-flag-provider": "v1.1.3",
