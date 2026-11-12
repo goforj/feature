@@ -150,7 +150,7 @@ func TestProviderListenerOwnership(t *testing.T) {
 
 // TestBlockedProviderDispatchStops makes stale, recovery, and config delivery interruptible.
 func TestBlockedProviderDispatchStops(t *testing.T) {
-	for _, stage := range []string{"stale", "ready", "config"} {
+	for _, stage := range []string{"stale", "ready", "config", "stale-config"} {
 		t.Run(stage, func(t *testing.T) {
 			provider := NewProvider(booleanEvaluator{})
 			provider.stop = make(chan struct{})
@@ -162,7 +162,9 @@ func TestBlockedProviderDispatchStops(t *testing.T) {
 				changes <- feature.Change{Err: feature.ErrSource}
 				<-provider.events
 			}
-			if stage == "stale" {
+			if stage == "stale-config" {
+				changes <- feature.Change{Revision: "next", Err: feature.ErrSource}
+			} else if stage == "stale" {
 				changes <- feature.Change{Err: feature.ErrSource}
 			} else {
 				changes <- feature.Change{Revision: "next", PreviousRevision: "previous"}
@@ -174,6 +176,153 @@ func TestBlockedProviderDispatchStops(t *testing.T) {
 				t.Fatal("blocked provider event leaked forwarder")
 			}
 		})
+	}
+}
+
+// TestCoalescedProviderRevision preserves configuration updates hidden inside a failure notification.
+func TestCoalescedProviderRevision(t *testing.T) {
+	provider := NewProvider(booleanEvaluator{})
+	provider.stop = make(chan struct{})
+	provider.done = make(chan struct{})
+	changes := make(chan feature.Change)
+	go provider.forwardChanges(&feature.Subscription{Changes: changes})
+	changes <- feature.Change{Revision: "initial"}
+	changes <- feature.Change{Revision: "latest", PreviousRevision: "latest", Err: feature.ErrSource}
+	for _, kind := range []openfeature.EventType{openfeature.ProviderConfigChange, openfeature.ProviderStale} {
+		event := <-provider.events
+		if event.EventType != kind || event.EventMetadata["revision"] != "latest" || event.FlagChanges != nil {
+			t.Fatal(event)
+		}
+	}
+	changes <- feature.Change{Revision: "latest", Err: feature.ErrSource}
+	if event := <-provider.events; event.EventType != openfeature.ProviderStale {
+		t.Fatal("unchanged failure repeated config change", event)
+	}
+	close(provider.stop)
+	<-provider.done
+}
+
+// TestSDKRepeatedStaleInitialization keeps shared bindings from reporting false readiness.
+func TestSDKRepeatedStaleInitialization(t *testing.T) {
+	ctx := context.Background()
+	fail := false
+	engine, err := feature.Open(ctx, feature.SourceFunc(func(context.Context) (feature.Document, error) {
+		if fail {
+			return feature.Document{}, errors.New("private source error")
+		}
+		return feature.Document{Schema: 1, Flags: map[string]feature.Flag{"flag": {Default: true}}}, nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := NewProvider(engine)
+	api := isolated.NewAPI()
+	t.Cleanup(func() { _ = api.Shutdown(ctx) })
+	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+		t.Fatal(err)
+	}
+	client := api.NewClient()
+	stale := make(chan openfeature.EventDetails, 2)
+	onStale := func(event openfeature.EventDetails) { stale <- event }
+	client.AddHandler(openfeature.ProviderStale, &onStale)
+	fail = true
+	if err := engine.Refresh(ctx); err != feature.ErrSource {
+		t.Fatal(err)
+	}
+	awaitEvent(t, stale)
+	if err := api.SetProviderAndWait(ctx, provider, openfeature.WithDomain("another")); !errors.Is(err, feature.ErrUnavailable) {
+		t.Fatal(err)
+	}
+	other := api.NewClient(openfeature.WithDomain("another"))
+	if err := engine.Refresh(ctx); err != feature.ErrSource {
+		t.Fatal(err)
+	}
+	for _, sdk := range []*openfeature.Client{client, other} {
+		if sdk.State() == openfeature.ReadyState {
+			t.Fatal("failed source reported ready")
+		}
+		if value, err := sdk.BooleanValue(ctx, "flag", false, openfeature.NewTargetlessEvaluationContext(nil)); !value || err != nil {
+			t.Fatal("failed registration discarded the last valid snapshot", value, err)
+		}
+	}
+	if driver, err := Open(ctx, NewProvider(engine)); driver != nil || err != feature.ErrUnavailable {
+		t.Fatal(driver, err)
+	}
+	if !engine.Enabled(ctx, "flag", false, feature.Subject{}) {
+		t.Fatal("failed owned initialization closed borrowed engine")
+	}
+	ready := make(chan openfeature.EventDetails, 2)
+	onReady := func(event openfeature.EventDetails) { ready <- event }
+	client.AddHandler(openfeature.ProviderReady, &onReady)
+	fail = false
+	if err := engine.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	awaitEvent(t, ready)
+	if client.State() != openfeature.ReadyState || other.State() != openfeature.ReadyState {
+		t.Fatal(client.State(), other.State())
+	}
+}
+
+// delayedChanges holds native notifications until a test supplies their coalesced result.
+type delayedChanges struct {
+	*feature.Client
+	changes chan feature.Change
+}
+
+// Subscribe retains native subscription cleanup while controlling notification delivery.
+func (d delayedChanges) Subscribe() (*feature.Subscription, error) {
+	subscription, err := d.Client.Subscribe()
+	if err != nil {
+		return nil, err
+	}
+	subscription.Changes = d.changes
+	return subscription, nil
+}
+
+// TestSDKCoalescedInitialFailureRecovery restores readiness after ordered failed registration.
+func TestSDKCoalescedInitialFailureRecovery(t *testing.T) {
+	ctx := context.Background()
+	fail := false
+	engine, err := feature.Open(ctx, feature.SourceFunc(func(context.Context) (feature.Document, error) {
+		if fail {
+			return feature.Document{}, feature.ErrSource
+		}
+		return feature.Document{Schema: 1, Flags: map[string]feature.Flag{"flag": {Default: true}}}, nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fail = true
+	if err := engine.Refresh(ctx); err != feature.ErrSource {
+		t.Fatal(err)
+	}
+	changes := make(chan feature.Change)
+	provider := NewProvider(delayedChanges{Client: engine, changes: changes})
+	api := isolated.NewAPI()
+	t.Cleanup(func() { _ = api.Shutdown(ctx) })
+	if err := api.SetProviderAndWait(ctx, provider); !errors.Is(err, feature.ErrUnavailable) {
+		t.Fatal(err)
+	}
+	client := api.NewClient()
+	if client.State() != openfeature.ErrorState {
+		t.Fatal(client.State())
+	}
+	ready := make(chan openfeature.EventDetails, 1)
+	onReady := func(event openfeature.EventDetails) { ready <- event }
+	client.AddHandler(openfeature.ProviderReady, &onReady)
+	fail = false
+	if err := engine.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// Recovery replaces the unread initial failure, as a bounded native listener can do.
+	changes <- feature.Change{Revision: engine.Status().Revision, PreviousRevision: engine.Status().Revision}
+	awaitEvent(t, ready)
+	if client.State() != openfeature.ReadyState {
+		t.Fatal(client.State())
+	}
+	if value, err := client.BooleanValue(ctx, "flag", false, openfeature.NewTargetlessEvaluationContext(nil)); !value || err != nil {
+		t.Fatal(value, err)
 	}
 }
 

@@ -330,7 +330,9 @@ func splitVariant(split Split, key, identity string) string {
 }
 
 // validInstant rejects time values that cannot round-trip through native JSON.
-func validInstant(at time.Time) bool { return !at.IsZero() && at.Year() >= 0 && at.Year() <= 9999 }
+func validInstant(at time.Time) bool {
+	return !at.IsZero() && at.Year() >= 0 && at.Year() <= 9999 && at.UTC().Year() >= 0 && at.UTC().Year() <= 9999
+}
 
 // validConditionName preserves bounded Unicode attribute names without implicit normalization.
 func validConditionName(name string) bool {

@@ -14,6 +14,7 @@ import (
 type Provider struct {
 	features     *feature.Features
 	closed       atomic.Bool
+	initFailed   atomic.Bool
 	evaluator    feature.Evaluator
 	mu           sync.Mutex
 	once         sync.Once
@@ -25,6 +26,8 @@ type Provider struct {
 }
 
 // NewProvider exposes an initialized engine without global registration or a second update loop.
+// Complete SDK registration before starting the native Run loop, and serialize later
+// registrations with Refresh: SDK initialization events can overwrite concurrent health events.
 func NewProvider(evaluator feature.Evaluator, options ...feature.Option) *Provider {
 	return &Provider{features: feature.New(evaluator, options...), evaluator: evaluator, events: make(chan openfeature.Event, 16)}
 }
@@ -42,7 +45,10 @@ func (p *Provider) Init(target openfeature.EvaluationContext) error {
 	return p.InitWithContext(context.Background(), target)
 }
 
-// InitWithContext publishes no resources and honors the SDK's startup cancellation.
+// InitWithContext honors startup cancellation and rejects known native source failures.
+// A failed initialization leaves the borrowed engine's last valid snapshot available.
+// Serialize SDK registration with native refreshes so SDK initialization events cannot
+// overwrite newer health events emitted during registration.
 func (p *Provider) InitWithContext(ctx context.Context, _ openfeature.EvaluationContext) error {
 	if err := ctx.Err(); err != nil {
 		return err

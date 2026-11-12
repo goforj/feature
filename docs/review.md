@@ -105,6 +105,22 @@ Security review found no actionable issue inside the documented source and colla
 
 The final local gate passed 293 unit cases, all 12 programs, and 1808/1808 runtime statements. All 160 separate container/SDK integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Decoder fuzzing completed 5,533,691 executions without a failure. The integration gate remains independent of exact unit coverage.
 
+## Interaction review of publication and SDK health
+
+Four additional independent reviews examined native model combinations, lifecycle and health forwarding, SDK value boundaries, and HTTP ownership/error handling. The native publication and provider event fixes were independently reviewed again after implementation. SDK driver numeric, off-variation, and borrowed-capability probes found no additional defect.
+
+Calendar validation accepted local dates whose UTC normalization crossed JSON's supported year range. Serialization then failed silently, and a memory-source clone could drop the malformed flag. Validation now checks normalized years, encoding errors remain visible, and compilation checks the actual serialized size before accepting or hashing a document. A separate reproduced composition of calendar rules and long variant references exceeded 1 MiB despite passing the early size estimate. The final publication check now rejects it. Regressions cover both progressive endpoints independently, valid calendar boundaries, startup rejection, last-valid refresh retention, and bounded compositions.
+
+HTTP client timeouts after response headers now preserve DeadlineExceeded, matching timeouts before headers. Real HTTP tests cover sources, exporters, and last-valid snapshot retention. Native Refresh still redacts source failures as ErrSource when its own context remains active.
+
+The native OpenFeature provider could lose a configuration event when a published revision coalesced with a later source failure. It now forwards the revision before stale health. Known native source failures reject initialization, including additional domain bindings, rather than letting SDK initialization report ready. Existing bindings retain evaluation of the last valid snapshot. Recovery after rejected initialization is covered separately from ordinary stale recovery.
+
+The SDK can overwrite a concurrent provider health event with its own later initialization result. This was reproduced with a real native engine and race detection. Its public provider interface offers no completion hook for ordering those events. Callers must finish SDK registration before native refresh starts and serialize later registrations with Refresh. This operational requirement is explicit in GoDoc and the contract; no timing retry or detached context masks the SDK boundary.
+
+Public signatures, module layout, dependencies, Go minimums, and valid document encoding are unchanged. Configuration validation now rejects previously accepted unencodable dates and oversized composed documents. Native-provider initialization now returns an error for known unhealthy sources. These are validation and readiness corrections; the retained native snapshot remains available.
+
+The final local gate passed 312 unit cases, all 12 programs, and 1823/1823 runtime statements. All 160 separate integration cases passed with race detection. Race checks, vet, tidy parity, module inventory, and generated-document parity passed. Native Go 1.24.13 race tests passed. Decoder fuzzing completed 5,753,089 executions without failure. Independent event/recovery checks passed 100 race-enabled repetitions, and the original external SDK probes passed after the fixes.
+
 ## Distribution inventory
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.

@@ -82,6 +82,9 @@ func (e *httpEndpoint) request(ctx context.Context, method string, body []byte) 
 		return nil, err
 	}
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, context.DeadlineExceeded
+		}
 		return nil, ErrSource
 	}
 	if len(data) > MaxDocumentBytes {

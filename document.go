@@ -124,7 +124,10 @@ func compile(doc Document) (*compiled, error) {
 		}
 		owned.Flags[key] = normalized
 	}
-	data := encodeDocument(owned)
+	data, err := encodeDocument(owned)
+	if err != nil || len(data) > MaxDocumentBytes {
+		return nil, ErrInvalidDocument
+	}
 	hash := sha256.Sum256(data)
 	return &compiled{document: owned, revision: hex.EncodeToString(hash[:])}, nil
 }

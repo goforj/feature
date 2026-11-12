@@ -23,7 +23,7 @@ func (p *Provider) startEvents(ctx context.Context) error {
 		return feature.ErrClosed
 	}
 	if p.started {
-		return nil
+		return p.readinessError()
 	}
 	source, ok := p.evaluator.(changeSource)
 	if !ok {
@@ -39,6 +39,15 @@ func (p *Provider) startEvents(ctx context.Context) error {
 	p.done = make(chan struct{})
 	p.started = true
 	go p.forwardChanges(subscription)
+	return p.readinessError()
+}
+
+// readinessError prevents SDK initialization from declaring an unhealthy native source ready.
+func (p *Provider) readinessError() error {
+	if source, ok := p.evaluator.(interface{ Status() feature.Status }); ok && source.Status().LastError != nil {
+		p.initFailed.Store(true)
+		return feature.ErrUnavailable
+	}
 	return nil
 }
 
@@ -46,6 +55,7 @@ func (p *Provider) startEvents(ctx context.Context) error {
 func (p *Provider) forwardChanges(subscription *feature.Subscription) {
 	defer close(p.done)
 	initial, stale := true, false
+	revision := ""
 	for {
 		select {
 		case <-p.stop:
@@ -54,19 +64,27 @@ func (p *Provider) forwardChanges(subscription *feature.Subscription) {
 			if !open {
 				return
 			}
-			if initial && change.Err == nil && change.PreviousRevision == "" {
+			if initial && change.Err == nil && change.PreviousRevision == "" && !p.initFailed.Load() {
 				initial = false
+				revision = change.Revision
 				continue
 			}
 			initial = false
 			if change.Err != nil {
+				if change.Revision != revision {
+					if !p.emitChange(openfeature.ProviderConfigChange, change) {
+						return
+					}
+					revision = change.Revision
+				}
 				stale = true
 				if !p.emitChange(openfeature.ProviderStale, change) {
 					return
 				}
 				continue
 			}
-			if stale {
+			initFailed := p.initFailed.Swap(false)
+			if stale || initFailed {
 				stale = false
 				if !p.emitChange(openfeature.ProviderReady, change) {
 					return
@@ -75,6 +93,7 @@ func (p *Provider) forwardChanges(subscription *feature.Subscription) {
 			if !p.emitChange(openfeature.ProviderConfigChange, change) {
 				return
 			}
+			revision = change.Revision
 		}
 	}
 }

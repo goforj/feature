@@ -433,7 +433,7 @@ fmt.Println("Borrowed checkout:", flags.Enabled(ctx, "checkout-v2"))
 
 ### openfeaturefeature.NewProvider
 
-NewProvider exposes an initialized engine without global registration or a second update loop.
+NewProvider exposes an initialized engine without global registration or a second update loop. Complete SDK registration before starting the native Run loop, and serialize later registrations with Refresh: SDK initialization events can overwrite concurrent health events.
 
 ```go
 provider := openfeaturefeature.NewProvider(engine)

@@ -171,7 +171,7 @@ func Encode(doc Document) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encodeDocument(state.document), nil
+	return encodeDocument(state.document)
 }
 
 // Decode validates bounded strict JSON, including duplicate keys and required fields.

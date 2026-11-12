@@ -44,6 +44,8 @@ Observers, custom sinks, and notifiers are synchronous. HTTP delivery is bounded
 
 Subscriptions have a one-message queue and coalesce slow consumers to the latest revision. Keys is nil after coalescing, meaning a consumer should refresh its whole inventory. Native provider forwarding is bounded, preserves SDK health transitions, and stops at provider shutdown without closing the borrowed engine.
 
+A coalesced source failure can also carry a new valid revision. The native provider forwards its configuration event before stale health so SDK cache invalidation sees the publication. Known native source failures reject SDK initialization, including additional domain bindings, while existing bindings can evaluate the retained snapshot. Complete SDK registration before native refresh begins, and serialize later registration with refresh: SDK-owned initialization events can overwrite concurrent health events. Source Status remains authoritative for native freshness.
+
 ## API and persisted data
 
 OpenFeature startup cancellation follows the pinned SDK's lifecycle behavior: shutdown can overlap provider initialization. Stateful providers must synchronize those methods. For a provider without that guarantee, manage its initialization and shutdown yourself and use the borrowed-client constructor. The adapter preserves provider binding checks and caller cancellation rather than wrapping providers or detaching their initialization contexts.

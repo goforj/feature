@@ -36,13 +36,12 @@ func encodedValue(value any) any {
 }
 
 // encodeDocument preserves schema 1 bytes while making typed floating-point values round-trip.
-func encodeDocument(doc Document) []byte {
+func encodeDocument(doc Document) ([]byte, error) {
 	result := Document{Schema: doc.Schema, Flags: make(map[string]Flag, len(doc.Flags))}
 	for key, flag := range doc.Flags {
 		result.Flags[key] = encodedFlag(flag)
 	}
-	data, _ := json.Marshal(result)
-	return data
+	return json.Marshal(result)
 }
 
 // encodedFlag preserves numeric distinctions consistently in revisions, notifications, and persistence.

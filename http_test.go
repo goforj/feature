@@ -150,6 +150,59 @@ func TestHTTPTransportBoundaries(t *testing.T) {
 	}
 }
 
+// TestHTTPTimeoutPhases preserves deadline classification before and after response headers.
+func TestHTTPTimeoutPhases(t *testing.T) {
+	for _, phase := range []string{"before_headers", "after_headers"} {
+		t.Run(phase, func(t *testing.T) {
+			var stalled atomic.Bool
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.Copy(io.Discard, r.Body)
+				if !stalled.Load() {
+					_, _ = io.WriteString(w, `{"schema":2,"flags":{"theme":{"default":"blue"}}}`)
+					return
+				}
+				if phase == "after_headers" {
+					w.WriteHeader(http.StatusOK)
+					w.(http.Flusher).Flush()
+				}
+				<-r.Context().Done()
+			}))
+			defer server.Close()
+			config := HTTPConfig{URL: server.URL, Timeout: 100 * time.Millisecond}
+			source, err := NewHTTPSource(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx := context.Background()
+			engine, err := Open(ctx, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			revision := engine.Status().Revision
+			stalled.Store(true)
+			if _, err := source.Load(ctx); err != context.DeadlineExceeded {
+				t.Fatalf("source timeout: got %v, want deadline exceeded", err)
+			}
+			if err := engine.Refresh(ctx); err != ErrSource {
+				t.Fatalf("refresh timeout: got %v, want source unavailable", err)
+			}
+			if engine.Status().Revision != revision || New(engine).String(ctx, "theme", "fallback").Value != "blue" {
+				t.Fatal("HTTP timeout replaced valid snapshot")
+			}
+			exporter, err := NewHTTPExporter(ExporterConfig{HTTP: config})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := exporter.Track(ctx, "checkout", Target{}, Event{}); err != context.DeadlineExceeded {
+				t.Fatalf("exporter timeout: got %v, want deadline exceeded", err)
+			}
+			if exporter.LastError() != context.DeadlineExceeded {
+				t.Fatal("exporter timeout classification was not retained")
+			}
+		})
+	}
+}
+
 // TestHTTPExporterPayloads verifies explicit identity export and classified change metadata.
 func TestHTTPExporterPayloads(t *testing.T) {
 	ctx := context.Background()

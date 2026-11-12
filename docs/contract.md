@@ -141,6 +141,10 @@ LaunchDarkly object numbers retain the SDK's float64 representation. Earlier ada
 
 The optional OpenFeature module also supplies NewProvider: ordinary OpenFeature clients can evaluate the injected engine through the standard provider contract. Provider shutdown disables its binding without closing its borrowed engine. No global registration or competing refresh loop is introduced.
 
+Finish SDK provider registration before starting the native refresh loop. Serialize later registrations or domain bindings with native Refresh calls. The pinned SDK emits its own initialization result after provider Init returns; that result can overwrite a concurrent native health event. The public provider interface cannot order those SDK-owned events. Native Status remains the source's health record.
+
+Initialization rejects a native engine with a known source failure rather than reporting ready. This also applies when binding an already registered provider to another SDK domain. An existing SDK binding can still evaluate the retained snapshot while its status is ERROR or STALE, and a subsequent successful refresh restores readiness. Owned Open returns an error for an unhealthy engine; recover the engine before creating a new provider and retrying. The borrowed native engine remains usable.
+
 ## Native rules and variants
 
 Schema 2 adds variants, default_variant, off_variant, and rule variant or split actions. Variant names reference one flag-local catalog and all values must agree on the flag type. A split has an explicit salt and ordered allocations totaling 10000 basis points. It requires a nonempty identity; missing identity leaves the rule ineligible. Allocation order, salt, flag key, and identity determine membership. Named actions normalize away redundant inline values. Contradictory inline values are rejected.
