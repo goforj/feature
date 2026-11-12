@@ -97,7 +97,7 @@ func Fingerprint(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	paths = append(paths, filepath.Join(root, "go.mod"))
+	paths = append(paths, filepath.Join(root, "go.mod"), filepath.Join(root, "scripts", "module-manifest.txt"))
 	sort.Strings(paths)
 	hash := sha256.New()
 	for _, path := range paths {

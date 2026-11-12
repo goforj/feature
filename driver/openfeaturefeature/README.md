@@ -2,7 +2,7 @@
 
 This optional module adapts an OpenFeature SDK client to the portable feature API. It requires Go 1.26 or newer because OpenFeature v1.20 requires that version. The root library keeps its Go 1.24 minimum and zero external runtime dependencies.
 
-New borrows an initialized SDK client. Open owns a separate isolated API, registers the supplied provider, waits for initialization, and cleans up failed startup. Close disables this adapter and shuts down only an owned API with a five-second cleanup deadline. The SDK's isolated factory is experimental and is contained behind this module.
+New borrows an initialized SDK client. Open owns a separate isolated API, registers the supplied provider, waits for initialization, and cleans up failed or canceled startup. Close disables this adapter and shuts down only an owned API. Concurrent and repeated calls wait for one cleanup attempt and return the same classified result. Cleanup supplies a five-second context deadline; providers must cooperate with it, and legacy provider shutdown cannot be forcibly interrupted. Use a bounded initialization context. The SDK's isolated factory is experimental and is contained behind this module.
 
 Resolve calls the SDK client rather than calling a provider directly, preserving SDK hooks, context precedence, and configured provider behavior. Target.Key is authoritative over a reserved targetingKey attribute. Kind is an explicit kind attribute; structured attributes are forwarded without string coercion. Individual providers define how they interpret those fields and privacy metadata.
 

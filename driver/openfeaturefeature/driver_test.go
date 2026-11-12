@@ -3,7 +3,9 @@ package openfeaturefeature
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -12,6 +14,72 @@ import (
 	"github.com/open-feature/go-sdk/openfeature/isolated"
 	"github.com/open-feature/go-sdk/openfeature/memprovider"
 )
+
+// TestConcurrentCloseSharesCompletion verifies every caller observes one cleanup and its stable result.
+func TestConcurrentCloseSharesCompletion(t *testing.T) {
+	for _, fails := range []bool{false, true} {
+		t.Run(fmt.Sprint(fails), func(t *testing.T) {
+			entered, release := make(chan struct{}), make(chan struct{})
+			var calls atomic.Int32
+			var finished atomic.Bool
+			var want error
+			if fails {
+				want = feature.ErrUnavailable
+			}
+			driver := New(clientFunc(nil))
+			driver.close = func(context.Context) error {
+				calls.Add(1)
+				close(entered)
+				<-release
+				finished.Store(true)
+				if fails {
+					return errors.New("private shutdown diagnostic")
+				}
+				return nil
+			}
+			owner := make(chan error, 1)
+			go func() { owner <- driver.Close() }()
+			<-entered
+			if d := driver.Resolve(context.Background(), "checkout", true, feature.Target{}); d.Err != feature.ErrClosed {
+				t.Error(d)
+			}
+			var group sync.WaitGroup
+			for i := 0; i < 16; i++ {
+				group.Add(1)
+				go func() {
+					defer group.Done()
+					if err := driver.Close(); err != want || !finished.Load() {
+						t.Error("close returned before cleanup or lost its result", err)
+					}
+				}()
+			}
+			close(release)
+			group.Wait()
+			if err := <-owner; err != want || calls.Load() != 1 {
+				t.Fatal(err, calls.Load())
+			}
+			if err := driver.Close(); err != want {
+				t.Fatal("repeated close lost cleanup error", err)
+			}
+		})
+	}
+}
+
+// TestCanceledSuccessfulInitialization releases resources even when the SDK returns success after cancellation.
+func TestCanceledSuccessfulInitialization(t *testing.T) {
+	base := isolated.NewAPI()
+	defer base.Shutdown(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api := &testAPI{base: base, start: func(context.Context) error { cancel(); return nil }}
+	driver, err := open(ctx, openfeature.NoopProvider{}, api)
+	if driver != nil {
+		_ = driver.Close()
+	}
+	if driver != nil || err != context.Canceled || api.stops != 1 {
+		t.Fatalf("driver=%v error=%v cleanups=%d", driver, err, api.stops)
+	}
+}
 
 // clientFunc controls only the SDK call boundary, leaving the adapter policy under test.
 type clientFunc func(context.Context, string, bool, openfeature.EvaluationContext) (openfeature.BooleanEvaluationDetails, error)

@@ -2,7 +2,7 @@
 
 This optional module adapts the official LaunchDarkly Go server SDK to the portable feature API. It requires Go 1.25 or newer; native-only users of the root library still need Go 1.24.
 
-Use New to borrow an initialized SDK client, or Open with Config to create an owned client. Open waits for SDK initialization with a five-second default timeout, respects caller cancellation, and cleans up partial startup. Close disables this adapter and closes only resources created by Open. Native SDK configuration owns streaming, polling, transport, privacy, events, and flush behavior. The adapter starts no competing update loop.
+Use New to borrow an initialized SDK client, or Open with Config to create an owned client. Open waits for SDK initialization with a five-second default timeout, respects caller cancellation, and cleans up partial startup. Close disables this adapter and closes only resources created by Open. Concurrent and repeated calls wait for one cleanup attempt and return the same classified result. Native SDK configuration owns streaming, polling, transport, privacy, events, and flush behavior. The adapter starts no competing update loop.
 
 Target.Key is authoritative. Kind defaults to user. Typed attributes retain native SDK semantics; anonymous and privateAttributes use the vendor's explicit metadata conventions. A multi-kind target uses Kind multi and nested map[string]any identities with their own key fields. No identity kind is inferred from a key prefix. Native SDK numeric representation and targeting behavior remain authoritative.
 

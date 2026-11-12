@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -43,9 +44,11 @@ type Config struct {
 
 // Driver borrows or owns an SDK client and supports concurrent evaluation and shutdown.
 type Driver struct {
-	client Client
-	close  func() error
-	closed atomic.Bool
+	client   Client
+	close    func() error
+	closed   atomic.Bool
+	once     sync.Once
+	closeErr error
 }
 
 // New borrows an initialized native client without changing its configuration or lifecycle.
@@ -99,16 +102,17 @@ func open(ctx context.Context, config Config, create func(string, ldclient.Confi
 
 // Close disables this adapter once and closes only SDK resources created by Open.
 // The native SDK controls its flush and close timeout policy through SDKConfig.
+// Concurrent callers wait for the same cleanup and receive the same safe result.
 func (d *Driver) Close() error {
-	if !d.closed.CompareAndSwap(false, true) {
-		return nil
-	}
-	if d.close != nil {
-		if err := d.close(); err != nil {
-			return feature.ErrUnavailable
+	d.once.Do(func() {
+		d.closed.Store(true)
+		if d.close != nil {
+			if err := d.close(); err != nil {
+				d.closeErr = feature.ErrUnavailable
+			}
 		}
-	}
-	return nil
+	})
+	return d.closeErr
 }
 
 // Resolve preserves native values, variation indexes, and safe error classifications.

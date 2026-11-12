@@ -1,6 +1,7 @@
 package devtools
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,9 @@ func TestModuleInventoryRejectsDrift(t *testing.T) {
 	}
 	if err := CheckModules(root); err == nil || !strings.Contains(err.Error(), "mismatch") {
 		t.Fatal(err)
+	}
+	if err := TestUnit(root, false, io.Discard); err == nil || !strings.Contains(err.Error(), "module inventory mismatch") {
+		t.Fatal("unit coverage accepted an unlisted module", err)
 	}
 	if err := os.WriteFile(manifest, []byte("published .\ntooling hidden\n"), 0644); err != nil {
 		t.Fatal(err)

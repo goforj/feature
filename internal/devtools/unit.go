@@ -51,7 +51,7 @@ func MergeCoverage(profiles ...[]byte) ([]byte, int, int, error) {
 			location := fields[0]
 			relative := strings.TrimPrefix(location, "github.com/goforj/feature/")
 			filename := strings.SplitN(relative, ":", 2)[0]
-			if strings.HasPrefix(filename, "internal/devtools/") || strings.HasPrefix(filename, "tools/") || strings.HasPrefix(filename, "examples/") || strings.HasPrefix(filename, "integration/") || strings.HasPrefix(filename, "searchtest/") {
+			if strings.HasPrefix(filename, "internal/devtools/") || strings.HasPrefix(filename, "tools/") || strings.HasPrefix(filename, "examples/") || strings.HasPrefix(filename, "integration/") {
 				continue
 			}
 			var size, count int
@@ -94,6 +94,9 @@ func MergeCoverage(profiles ...[]byte) ([]byte, int, int, error) {
 
 // TestUnit runs instrumented examples and unit tests, recording evidence only when requested.
 func TestUnit(root string, record bool, output io.Writer) error {
+	if err := CheckModules(root); err != nil {
+		return err
+	}
 	artifacts := filepath.Join(root, ".artifacts")
 	coverage := filepath.Join(artifacts, "example-coverage")
 	if err := os.RemoveAll(coverage); err != nil {

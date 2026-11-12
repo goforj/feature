@@ -34,7 +34,7 @@ The [provider study](provider-study.md) informed a provider-neutral client with 
 - [x] Review schema 1, rollout encoding, and revision normalization as compatibility contracts before publishing them.
 - [x] Reproduce and fix concrete findings, add regression coverage, and rerun affected checks. The [verification record](verification.md) records findings, executed checks, consumer evidence, and limits.
 
-Completion means the review findings and their resolution are recorded. Existing coverage and green CI do not stand in for this review.
+The latest [multi-pass review](review.md) records reproduced findings and their resolution. Existing coverage and green CI do not stand in for this review.
 
 ## Real-App adoption
 

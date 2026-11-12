@@ -5,6 +5,7 @@ package openfeaturefeature
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -28,9 +29,11 @@ type evaluationAPI interface {
 // Driver preserves the configured SDK's behavior and supports concurrent use.
 // A generic provider can perform network I/O and does not imply frozen snapshots.
 type Driver struct {
-	client Client
-	close  func(context.Context) error
-	closed atomic.Bool
+	client   Client
+	close    func(context.Context) error
+	closed   atomic.Bool
+	once     sync.Once
+	closeErr error
 }
 
 // New borrows an initialized SDK client without changing provider bindings or lifecycle.
@@ -53,7 +56,11 @@ func open(ctx context.Context, provider openfeature.FeatureProvider, api evaluat
 		_ = api.Shutdown(cleanup)
 		return nil, err
 	}
-	if err := api.SetProviderAndWait(ctx, provider); err != nil {
+	err := api.SetProviderAndWait(ctx, provider)
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+	if err != nil {
 		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = api.Shutdown(cleanup)
@@ -67,18 +74,19 @@ func open(ctx context.Context, provider openfeature.FeatureProvider, api evaluat
 
 // Close disables the adapter once and closes only the isolated API owned by Open.
 // Borrowed clients, other domains, and the process-global API are never closed.
+// Concurrent callers wait for the same cleanup and receive the same safe result.
 func (d *Driver) Close() error {
-	if !d.closed.CompareAndSwap(false, true) {
-		return nil
-	}
-	if d.close != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := d.close(ctx); err != nil {
-			return feature.ErrUnavailable
+	d.once.Do(func() {
+		d.closed.Store(true)
+		if d.close != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := d.close(ctx); err != nil {
+				d.closeErr = feature.ErrUnavailable
+			}
 		}
-	}
-	return nil
+	})
+	return d.closeErr
 }
 
 // Resolve evaluates through the SDK with an owned context and explicit caller fallback.

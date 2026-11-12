@@ -1,10 +1,12 @@
 # Verification record
 
+The latest [multi-pass review](review.md) records reproduced lifecycle fixes, coverage-gate hardening, compatibility decisions, and remaining publication work.
+
 The standalone library includes native memory/file evaluation, a portable boolean facade, and optional direct LaunchDarkly and OpenFeature SDK adapters. Framework wiring, typed flag values, hosted account verification, and release publication remain separate work.
 
 ## Executed checks
 
-The runtime unit gate covers exactly **553 of 553 statements** across the root and both driver modules. It runs all seven canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the source fingerprint, toolchain, actual case count, and statement counts.
+The runtime unit gate requires exact **100% statement coverage** across the root and both driver modules. It runs all seven canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the current covered and total statement counts, source fingerprint, toolchain, and actual case count.
 
 The [integration evidence](integration-results.json) records the current passing cases with race detection. Real, digest-pinned GO Feature Flag and official LaunchDarkly Relay containers serve the SDKs. Tests verify both running versions, a nine-case contract across five configurations, real container pause/resume, rejected credentials and initialization, typed attributes, malformed HTTP success, in-flight cancellation, updates, and shutdown. File tests preserve coherent request snapshots during concurrent refresh and recover after malformed documents and deletion.
 

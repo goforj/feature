@@ -31,7 +31,7 @@ func fixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	paths = append(paths, assets...)
-	paths = append(paths, "../../go.mod", "../../docs/README.tmpl.md")
+	paths = append(paths, "../../go.mod", "../../scripts/module-manifest.txt", "../../docs/README.tmpl.md")
 	for _, path := range paths {
 		destination := filepath.Join(root, strings.TrimPrefix(filepath.ToSlash(path), "../../"))
 		if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
@@ -163,6 +163,15 @@ func TestGenerateFailures(t *testing.T) {
 	}
 }
 
+// TestModuleInventoryInvalidatesEvidence prevents a changed validation scope from reusing old coverage claims.
+func TestModuleInventoryInvalidatesEvidence(t *testing.T) {
+	root := fixture(t)
+	change(t, root, "scripts/module-manifest.txt", "# classification module-directory", "# changed module inventory")
+	if err := Generate(root); err == nil || !strings.Contains(err.Error(), "unit evidence is stale") {
+		t.Fatal("changed module inventory reused old unit evidence", err)
+	}
+}
+
 // TestGoDocAndSnippetErrors verifies malformed inputs never invent API descriptions.
 func TestGoDocAndSnippetErrors(t *testing.T) {
 	root := fixture(t)
@@ -219,6 +228,9 @@ func TestMergeCoverage(t *testing.T) {
 	profile, total, covered, err := MergeCoverage(a, b)
 	if err != nil || total != 2 || covered != 2 || !strings.Contains(string(profile), "2 1") {
 		t.Fatal(string(profile), total, covered, err)
+	}
+	if _, total, covered, err := MergeCoverage(a, []byte("mode: set\ngithub.com/goforj/feature/searchtest/helper.go:1.1,2.1 3 0\n")); err != nil || total != 5 || covered != 0 {
+		t.Fatal("unclassified packages must not disappear from coverage", total, covered, err)
 	}
 	for _, bad := range []string{"", "mode: count\n", "mode: set\nbad\n", "mode: set\ngithub.com/goforj/feature/a.go:1.1,2.1 -1 0\n", "mode: set\ngithub.com/goforj/feature/a.go:1.1,2.1 bad 0\n", "mode: set\ngithub.com/goforj/feature/a.go:1.1,2.1 3 1\n"} {
 		if _, _, _, err := MergeCoverage(a, []byte(bad)); err == nil {

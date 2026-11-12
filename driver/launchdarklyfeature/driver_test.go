@@ -3,7 +3,9 @@ package launchdarklyfeature
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +18,56 @@ import (
 	"github.com/launchdarkly/go-server-sdk/v7/ldcomponents"
 	"github.com/launchdarkly/go-server-sdk/v7/testhelpers/ldtestdata"
 )
+
+// TestConcurrentCloseSharesCompletion verifies every caller observes one cleanup and its stable result.
+func TestConcurrentCloseSharesCompletion(t *testing.T) {
+	for _, fails := range []bool{false, true} {
+		t.Run(fmt.Sprint(fails), func(t *testing.T) {
+			entered, release := make(chan struct{}), make(chan struct{})
+			var calls atomic.Int32
+			var finished atomic.Bool
+			var want error
+			if fails {
+				want = feature.ErrUnavailable
+			}
+			driver := New(&testClient{})
+			driver.close = func() error {
+				calls.Add(1)
+				close(entered)
+				<-release
+				finished.Store(true)
+				if fails {
+					return errors.New("private shutdown diagnostic")
+				}
+				return nil
+			}
+			owner := make(chan error, 1)
+			go func() { owner <- driver.Close() }()
+			<-entered
+			if d := driver.Resolve(context.Background(), "checkout", true, feature.Target{}); d.Err != feature.ErrClosed {
+				t.Error(d)
+			}
+			var group sync.WaitGroup
+			for i := 0; i < 16; i++ {
+				group.Add(1)
+				go func() {
+					defer group.Done()
+					if err := driver.Close(); err != want || !finished.Load() {
+						t.Error("close returned before cleanup or lost its result", err)
+					}
+				}()
+			}
+			close(release)
+			group.Wait()
+			if err := <-owner; err != want || calls.Load() != 1 {
+				t.Fatal(err, calls.Load())
+			}
+			if err := driver.Close(); err != want {
+				t.Fatal("repeated close lost cleanup error", err)
+			}
+		})
+	}
+}
 
 // testClient exposes controlled lifecycle and resolution failures without network access.
 type testClient struct {

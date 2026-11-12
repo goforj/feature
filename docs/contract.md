@@ -105,7 +105,7 @@ Each process publishes atomically within itself. Multiple processes converge ind
 
 Jobs evaluate at execution unless the application persists an earlier decision. Feature flags do not replace authorization or billing entitlements. A stale snapshot cannot guarantee immediate emergency shutdown. Server-side rules and identities should remain private; exposing selected decisions to a browser requires application policy.
 
-The current native implementation includes no hosted provider adapter, OpenFeature compliance claim, administration API, framework integration, experimentation analytics, or multivariate values. The [provider study](provider-study.md) proposes the next architecture; it does not change the current runtime contract.
+The root native engine has no vendor dependencies. Optional LaunchDarkly and OpenFeature modules adapt actual SDKs through the portable boundary below, with [container integration tests](../integration). They do not change native snapshot, JSON, or rollout semantics. Administration APIs, framework integration, experimentation analytics, multivariate values, and OpenFeature specification conformance remain outside the implemented contract. The [provider study](provider-study.md) records the architecture research.
 
 ## Portable evaluation
 
@@ -114,3 +114,7 @@ The current native implementation includes no hosted provider adapter, OpenFeatu
 `For(Target)` owns typed targeting data for repeated checks without changing a shared client. Target is separate from the existing native Subject so the native string-map API remains source compatible. Target supports bounded booleans, Go numeric primitives, strings, time.Time, nested string-key maps, []any, and []string. Unsupported values, non-finite floats, excessive nesting, and contexts above the 64 KiB aggregate budget return ErrInvalidSubject on evaluation. A Scope is targeting data, not a frozen provider configuration.
 
 Native Client implements Evaluator through Resolve. Its existing Open, Evaluate, Enabled, Snapshot, Refresh, Run, and Status methods retain their contracts. Native rules still match string attributes only; non-string Target attributes do not match a native string condition. Native identity hashing uses the explicit key and ignores the optional identity kind. Features does not expose fake generic snapshots or start a second update loop around a vendor SDK.
+
+SDK adapters expose Close on their concrete drivers. New borrows its SDK client; closing that adapter disables only the adapter. Open owns its SDK resources and initialization cleanup. Concurrent Close calls wait for one cleanup attempt and return its same classified result, including repeated calls after cleanup failure. Calls already evaluating when closure begins follow the native SDK's lifecycle semantics; new evaluations return ErrClosed.
+
+OpenFeature Open honors cancellation observed before publishing a successfully initialized driver. Cleanup supplies a five-second context deadline, but context-aware provider implementations must cooperate with it. Legacy provider shutdown has no context parameter, so the SDK cannot impose a hard timeout on such a provider. Applications must supply bounded initialization contexts and providers with appropriate shutdown behavior. LaunchDarkly shutdown uses the native SDK's configured flush and timeout policy.
