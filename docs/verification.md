@@ -68,3 +68,18 @@ The adapter-only checks did not force-upgrade the root, so they also validate ea
 - Documentation: SDK constructors have executable examples and generated API-index destinations. Generator tests reject unrelated constructors sharing the same name. Unit and integration reports remain separate and tied to tested source.
 
 Hosted LaunchDarkly verification, real GoForj App adoption, framework integration, external Codecov setup, public distribution, and releases remain pending in the [roadmap](roadmap.md).
+
+## Renewed notification-boundary consumer verification
+
+After the independent review found and fixed the complete-inventory notification limit, four fresh private Git consumers passed with GOWORK=off and no local replacements:
+
+| Consumer | Executed toolchain | Selected root | Selected adapters |
+| :--- | :--- | :--- | :--- |
+| Native only | Go 1.24.13 | v0.0.0-20261112233624-815737cc74c4 | None |
+| LaunchDarkly only | Go 1.25.5 | v0.0.0-20261112233624-815737cc74c4 | v0.0.0-20261112233735-6d068f9d7e3f |
+| OpenFeature only | Go 1.26.0 | v0.0.0-20261112233624-815737cc74c4 | v0.0.0-20261112233735-6d068f9d7e3f |
+| Native and both drivers | Go 1.27.4 | v0.0.0-20261112233624-815737cc74c4 | v0.0.0-20261112233735-6d068f9d7e3f |
+
+Every consumer delivered a complete 2048-key notification to a real local HTTP endpoint, rejected a larger key list, and rejected the original regex expansion counterexample. Adapter-only consumers selected the corrected root through their declared requirements without forcing a root upgrade. Existing typed native, official LaunchDarkly SDK, and native OpenFeature SDK round-trip checks also passed with race detection. These are private source-commit installations, not versioned releases or hosted-account verification.
+
+The corrected source passed 419 unit cases, all 12 executable programs, exact 1966/1966 runtime unit statement coverage, all 160 separate race-enabled integration cases, full module race tests, vet, tidy, module inventory, generated parity, and its root Go 1.24.13 race suite. Independent native probing passed 31,680 composed decisions, each adapter suite passed ten shuffled race repetitions, and notification closure review passed three shuffled full-root race repetitions. No actionable issue remained after the two independent notification closure checks.
