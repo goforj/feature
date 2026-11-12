@@ -45,6 +45,8 @@ The full integration gate now also requires those context cases and verifies tha
 
 This follow-up passed all 87 required integration cases with race detection, exact 100% runtime unit statement coverage, all seven executable programs, race and vet checks, tidy and module inventory checks, and generated-document parity. Current statement counts are recorded in the unit evidence. Minimum-version suites and all three runtime vulnerability scans also passed. The public signatures, schema, rollout encoding, dependency versions, and module Go minimums are unchanged.
 
+Fresh independent native, LaunchDarkly, OpenFeature, and combined Git consumers passed against runtime commit `8e7a76c0f17b6e6e0e8cb3042a19de2f231ae9fa` without local replacements. These checks additionally exercised native validation precedence and accounting, actual invalid SDK TLS configuration, caller cancellation during a real SDK event-processor factory error, and repeated native OpenFeature provider cleanup failures. The standalone driver consumers retained their declared older root requirement, while native and combined consumers selected the reviewed root. Toolchain details are in verification.md. CI and Security passed for that runtime commit.
+
 ## Documentation and distribution
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.
