@@ -34,10 +34,13 @@ func main() {
 	// snippet:start typed-values
 	fmt.Println("Theme:", flags.String(ctx, "theme", "classic").Value)
 	// Theme: classic
+
 	fmt.Println("Page size:", flags.Int(ctx, "page-size", 10).Value)
 	// Page size: 25
+
 	fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 	// Sample rate: 0.25
+
 	layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
 	fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
 	// Columns: 2

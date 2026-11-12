@@ -30,8 +30,10 @@ func main() {
 	})
 	fmt.Println("Tenant checkout:", checkout.Enabled(ctx, "checkout-v2"))
 	// Tenant checkout: true
+
 	fmt.Println("Untargeted checkout:", features.Enabled(ctx, "checkout-v2"))
 	// Untargeted checkout: false
+
 	decision := checkout.Evaluate(ctx, "unknown-feature", true)
 	fmt.Println("Explicit fallback:", decision.Value, decision.Reason)
 	// Explicit fallback: true missing

@@ -28,16 +28,20 @@ func main() {
 	flags := feature.New(engine, feature.WithObserver(feature.ObserverFunc(func(context.Context, feature.Observation) { observations++ })))
 	fmt.Println("Tracking configured:", flags.SupportsTracking())
 	// Tracking configured: true
+
 	if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
 		panic(err)
 	}
 	// Tracked: checkout
+
 	if err := flags.For(feature.Target{Key: "tenant:acme"}).Track(ctx, "purchase", feature.Event{Attributes: map[string]any{"currency": "USD"}}); err != nil {
 		panic(err)
 	}
 	// Tracked: purchase
+
 	fmt.Println("Observed operations:", observations)
 	// Observed operations: 2
+
 	subscription, err := engine.Subscribe()
 	if err != nil {
 		panic(err)

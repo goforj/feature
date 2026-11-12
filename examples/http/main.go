@@ -40,6 +40,7 @@ func main() {
 	flags := feature.New(engine, feature.WithObserver(exporter))
 	fmt.Println("Remote theme:", flags.String(ctx, "theme", "classic").Value)
 	// Remote theme: blue
+
 	if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
 		panic(err)
 	}

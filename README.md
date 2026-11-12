@@ -166,8 +166,10 @@ checkout := features.For(feature.Target{
 })
 fmt.Println("Tenant checkout:", checkout.Enabled(ctx, "checkout-v2"))
 // Tenant checkout: true
+
 fmt.Println("Untargeted checkout:", features.Enabled(ctx, "checkout-v2"))
 // Untargeted checkout: false
+
 decision := checkout.Evaluate(ctx, "unknown-feature", true)
 fmt.Println("Explicit fallback:", decision.Value, decision.Reason)
 // Explicit fallback: true missing
@@ -196,10 +198,13 @@ Object returns a typed decision with an explicit fallback.
 ```go
 fmt.Println("Theme:", flags.String(ctx, "theme", "classic").Value)
 // Theme: classic
+
 fmt.Println("Page size:", flags.Int(ctx, "page-size", 10).Value)
 // Page size: 25
+
 fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 // Sample rate: 0.25
+
 layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
 fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
 // Columns: 2
@@ -222,13 +227,16 @@ target := feature.Target{Key: "tenant:acme", Attributes: map[string]any{"paid": 
 flags := feature.New(engine).For(target)
 fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 // Paid tenant theme: green
+
 request := feature.New(engine.Snapshot()).For(target)
 now = start
 fmt.Println("Scheduled launch:", flags.Enabled(ctx, "launch"))
 // Scheduled launch: true
+
 now = end
 fmt.Println("Rollout at completion:", flags.Enabled(ctx, "rollout"))
 // Rollout at completion: true
+
 fmt.Println("Captured request launch:", request.Enabled(ctx, "launch"))
 // Captured request launch: false
 ```
@@ -265,16 +273,20 @@ if err != nil {
 flags := feature.New(engine, feature.WithObserver(feature.ObserverFunc(func(context.Context, feature.Observation) { observations++ })))
 fmt.Println("Tracking configured:", flags.SupportsTracking())
 // Tracking configured: true
+
 if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
 	panic(err)
 }
 // Tracked: checkout
+
 if err := flags.For(feature.Target{Key: "tenant:acme"}).Track(ctx, "purchase", feature.Event{Attributes: map[string]any{"currency": "USD"}}); err != nil {
 	panic(err)
 }
 // Tracked: purchase
+
 fmt.Println("Observed operations:", observations)
 // Observed operations: 2
+
 subscription, err := engine.Subscribe()
 if err != nil {
 	panic(err)
@@ -299,16 +311,20 @@ if err != nil {
 flags := feature.New(engine, feature.WithObserver(feature.ObserverFunc(func(context.Context, feature.Observation) { observations++ })))
 fmt.Println("Tracking configured:", flags.SupportsTracking())
 // Tracking configured: true
+
 if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
 	panic(err)
 }
 // Tracked: checkout
+
 if err := flags.For(feature.Target{Key: "tenant:acme"}).Track(ctx, "purchase", feature.Event{Attributes: map[string]any{"currency": "USD"}}); err != nil {
 	panic(err)
 }
 // Tracked: purchase
+
 fmt.Println("Observed operations:", observations)
 // Observed operations: 2
+
 subscription, err := engine.Subscribe()
 if err != nil {
 	panic(err)
@@ -349,6 +365,7 @@ if err != nil {
 flags := feature.New(engine, feature.WithObserver(exporter))
 fmt.Println("Remote theme:", flags.String(ctx, "theme", "classic").Value)
 // Remote theme: blue
+
 if err := flags.Track(ctx, "checkout", feature.Event{}); err != nil {
 	panic(err)
 }
@@ -601,6 +618,7 @@ if err := features.Refresh(ctx); err != nil {
 }
 fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
 // Current checkout: true
+
 fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
 // Captured checkout: false
 ```

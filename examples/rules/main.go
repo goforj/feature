@@ -33,13 +33,16 @@ func main() {
 	flags := feature.New(engine).For(target)
 	fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 	// Paid tenant theme: green
+
 	request := feature.New(engine.Snapshot()).For(target)
 	now = start
 	fmt.Println("Scheduled launch:", flags.Enabled(ctx, "launch"))
 	// Scheduled launch: true
+
 	now = end
 	fmt.Println("Rollout at completion:", flags.Enabled(ctx, "rollout"))
 	// Rollout at completion: true
+
 	fmt.Println("Captured request launch:", request.Enabled(ctx, "launch"))
 	// Captured request launch: false
 	// snippet:end native-rules

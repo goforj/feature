@@ -48,6 +48,7 @@ func main() {
 	}
 	fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
 	// Current checkout: true
+
 	fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
 	// Captured checkout: false
 	// snippet:end refresh
