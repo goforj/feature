@@ -6,9 +6,11 @@
 // its source, refresh, status, and genuine immutable snapshot contracts.
 //
 // Open loads a complete source synchronously. Applications own the refresh lifecycle:
-// call Refresh explicitly or run Run with a cancellable context. Evaluations never
-// perform I/O. Snapshot captures a revision for consistent decisions within a job
-// or request. Refresh failures retain the last valid document.
+// call Refresh explicitly or run Run with a cancellable context. Native decisions
+// read local immutable state; SDK providers, observers, and sinks follow their
+// configured I/O behavior. Snapshot captures a revision and evaluation time for
+// consistent decisions within a job or request. Refresh failures retain the last
+// valid document.
 //
 // Clients and views support concurrent use. Subjects are borrowed only during an
 // evaluation and must not be mutated concurrently. Sources passed to Open are
