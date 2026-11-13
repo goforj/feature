@@ -83,3 +83,18 @@ After the independent review found and fixed the complete-inventory notification
 Every consumer delivered a complete 2048-key notification to a real local HTTP endpoint, rejected a larger key list, and rejected the original regex expansion counterexample. Adapter-only consumers selected the corrected root through their declared requirements without forcing a root upgrade. Existing typed native, official LaunchDarkly SDK, and native OpenFeature SDK round-trip checks also passed with race detection. These are private source-commit installations, not versioned releases or hosted-account verification.
 
 The corrected source passed 419 unit cases, all 12 executable programs, exact 1966/1966 runtime unit statement coverage, all 160 separate race-enabled integration cases, full module race tests, vet, tidy, module inventory, generated parity, and its root Go 1.24.13 race suite. Independent native probing passed 31,680 composed decisions, each adapter suite passed ten shuffled race repetitions, and notification closure review passed three shuffled full-root race repetitions. No actionable issue remained after the two independent notification closure checks.
+
+## API simplicity consumer verification
+
+The compatible API adjustment adds Features.Snapshot, ObjectAs, and Validate. Four fresh private Git consumers passed with GOWORK=off, race detection, and no local replacements:
+
+| Consumer | Executed toolchain | Selected root | Selected adapters |
+| :--- | :--- | :--- | :--- |
+| Native only | Go 1.24.13 | v0.0.0-20261113224422-3e7b49d5eec5 | None |
+| LaunchDarkly only | Go 1.25.5 | v0.0.0-20261113224422-3e7b49d5eec5 | v0.0.0-20261113224729-b1e08a818877 |
+| OpenFeature only | Go 1.26.0 | v0.0.0-20261113224422-3e7b49d5eec5 | v0.0.0-20261113224729-b1e08a818877 |
+| Native and both drivers | Go 1.27.4 | v0.0.0-20261113224422-3e7b49d5eec5 | v0.0.0-20261113224729-b1e08a818877 |
+
+Adapter-only consumers selected their declared minimum root without forcing an upgrade. Each exercised owned application-struct decoding, decision revisions, live versus captured values, retained observer and tracker policy, and explicit validation paths with redacted error text. Existing regex-expansion and complete-inventory HTTP webhook checks also passed. Prior official SDK and typed engine checks remained in the consumers. These checks establish authenticated source-commit installation under the current private access model, not a versioned release or hosted-account verification.
+
+The candidate passed 444 unit cases, all 13 executable programs, exact 2088/2088 runtime statements, all 172 separate race-enabled real-service integration cases, full module race checks, vet, tidy, module inventory, and generated parity. The new API regression suite passed ten shuffled race repetitions with seed 139277. The full root Go 1.24.13 race suite also passed. Unit and integration evidence was regenerated after module pin changes, with intentional development replacements preserved.
