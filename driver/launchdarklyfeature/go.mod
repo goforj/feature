@@ -3,7 +3,7 @@ module github.com/goforj/feature/driver/launchdarklyfeature
 go 1.25.0
 
 require (
-	github.com/goforj/feature v0.0.0-20261112233624-815737cc74c4
+	github.com/goforj/feature v0.0.0-20261113224422-3e7b49d5eec5
 	github.com/launchdarkly/go-sdk-common/v3 v3.6.0
 	github.com/launchdarkly/go-server-sdk/v7 v7.22.0
 )
