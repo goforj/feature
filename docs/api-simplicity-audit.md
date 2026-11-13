@@ -96,3 +96,15 @@ Inspected the repository-pinned OpenFeature Go SDK v1.20.0 and LaunchDarkly Go s
 An independent temporary consumer module passed ten race-enabled repetitions of three public-API probes: native and portable read shapes, snapshot facade policy reconstruction, and JSON-tree versus struct fallbacks. The probes confirm current behavior; they do not claim that the proposed API additions exist. The existing 12 executable programs remain the canonical supported workflows.
 
 The audit preserves all public signatures and behavioral contracts. Its only source correction clarifies package GoDoc: native decisions read local state, while SDK providers and configured callbacks can perform I/O. Production correctness acceptance does not establish that every API choice is optimal. Resolve the application-frontdoor and snapshot-policy decisions before freezing the initial API; retain the current result model unless a consumer trial justifies expanding it.
+
+## Implemented adjustments
+
+The follow-up implements the compatible changes from this audit:
+
+- Features and Scope are the documented application API. File, polling, targeting, rule, and quick-start examples keep native lifecycle operations on the engine. Existing native signatures and Subject remain available, with their API-index entries grouped as native compatibility.
+- Features.Snapshot captures native definitions and time while retaining observer and selected tracking policy. Recapturing a native View preserves the capture. Unsupported SDK drivers return ErrUnsupported. The original target ownership stays with For.
+- ObjectAs infers an application type from its fallback and decodes structures through the small ObjectReader boundary implemented by Features and Scope. It retains metadata, owns JSON-visible fallback data separately from provider input, and redacts conversion errors. Concrete fields use standard JSON conversion rules; interface fields retain json.Number. Custom JSON callbacks remain application-owned.
+- Validate returns one bounded deterministic ValidationError for explicit authoring tools. Path and Problem are available for inspection while ordinary error text and runtime source operations stay redacted. The existing compiler remains authoritative for acceptance.
+- Result-based typed reads and the existing boolean convenience methods retain their signatures. No second getter/details naming family was added.
+
+Runnable examples, direct regression tests, and the shared real-service integration suite exercise the new workflows. Schema 1 bytes, native revisions, rollout assignments, optional module boundaries, and minimum Go versions remain unchanged.

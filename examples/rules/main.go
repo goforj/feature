@@ -63,7 +63,8 @@ func main() {
 		panic(err)
 	}
 	target := feature.Target{Key: "tenant:acme", Attributes: map[string]any{"paid": true, "seats": 12}}
-	flags := feature.New(engine).For(target)
+	features := feature.New(engine)
+	flags := features.For(target)
 	fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 	// Paid tenant theme: green
 
@@ -71,7 +72,11 @@ func main() {
 	fmt.Println("Weighted experiment:", experiment.Value, experiment.Variant)
 	// Weighted experiment: blue control
 
-	request := feature.New(engine.Snapshot()).For(target)
+	snapshot, err := features.Snapshot()
+	if err != nil {
+		panic(err)
+	}
+	request := snapshot.For(target)
 	now = start
 	fmt.Println("Scheduled launch:", flags.Enabled(ctx, "launch"))
 	// Scheduled launch: true

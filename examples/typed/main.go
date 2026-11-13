@@ -52,6 +52,19 @@ func main() {
 	fmt.Println("Menu:", flags.Object(ctx, "menu", []any{}).Value)
 	// Menu: [home billing]
 	// snippet:end typed-values
+
+	// snippet:start typed-decoding
+	type layoutConfig struct {
+		Columns int `json:"columns"`
+	}
+	layoutResult := feature.ObjectAs(ctx, flags, "layout", layoutConfig{Columns: 1})
+	fmt.Println("Typed columns:", layoutResult.Value.Columns)
+	// Typed columns: 2
+
+	menu := feature.ObjectAs(ctx, flags.For(feature.Target{Key: "tenant:acme"}), "menu", []string{"home"})
+	fmt.Println("Typed menu:", menu.Value)
+	// Typed menu: [home billing]
+	// snippet:end typed-decoding
 }
 
 // Output:
@@ -60,3 +73,5 @@ func main() {
 // Sample rate: 0.25
 // Columns: 2
 // Menu: [home billing]
+// Typed columns: 2
+// Typed menu: [home billing]

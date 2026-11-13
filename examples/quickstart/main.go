@@ -42,7 +42,8 @@ func main() {
 		Key:        "tenant:acme",
 		Attributes: map[string]any{"plan": "pro"},
 	}
-	flags := feature.New(engine).For(target)
+	features := feature.New(engine)
+	flags := features.For(target)
 	fmt.Println("New checkout:", flags.Enabled(ctx, "checkout-v2"))
 	// New checkout: true
 
@@ -55,13 +56,20 @@ func main() {
 	fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 	// Sample rate: 0.25
 
-	layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
-	fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
+	type layoutConfig struct {
+		Columns int `json:"columns"`
+	}
+	layout := feature.ObjectAs(ctx, flags, "layout", layoutConfig{Columns: 1})
+	fmt.Println("Columns:", layout.Value.Columns)
 	// Columns: 3
 	// snippet:end quickstart-values
 
 	// snippet:start quickstart-refresh
-	request := feature.New(engine.Snapshot()).For(target)
+	snapshot, err := features.Snapshot()
+	if err != nil {
+		panic(err)
+	}
+	request := snapshot.For(target)
 	document.Flags["theme"] = feature.Flag{Default: "sunrise"}
 	if err := source.Replace(document); err != nil {
 		panic(err)

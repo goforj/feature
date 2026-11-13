@@ -40,6 +40,8 @@ Change the theme in the same process. New decisions adopt the update; a captured
 {{QUICKSTART_REFRESH}}
 ```
 
+Application services use `Features` and `Scope`. Keep the native engine at startup for `Refresh`, `Run`, and `Status`. `Features.Snapshot` retains observer and tracking configuration; SDK drivers without genuine snapshots return `ErrUnsupported`.
+
 Use a file or HTTP source with the same engine to load external definitions. Refresh explicitly or run a caller-owned polling loop. The [refresh](examples/refresh/main.go) and [polling](examples/polling/main.go) examples show both workflows.
 
 The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the complete example:
@@ -81,7 +83,8 @@ Run from the repository root:
 ```sh
 go -C examples run ./quickstart   # Typed flags, tenant targeting, live updates, and snapshots.
 go -C examples run ./portable     # Portable checks and typed request targeting.
-go -C examples run ./typed        # Strings, integers, floats, objects, arrays, and fallbacks.
+go -C examples run ./typed        # Typed flags, application structs, arrays, and fallbacks.
+go -C examples run ./validation   # Definition paths and safe authoring diagnostics.
 go -C examples run ./rules        # Typed targeting, variants, weighted splits, and timed rollouts.
 go -C examples run ./events       # Observability, tracking, and change subscriptions.
 go -C examples run ./http         # HTTP configuration and webhook delivery.
@@ -93,7 +96,7 @@ go -C examples run ./launchdarkly # Borrowed and owned SDK adapters, offline dat
 go -C examples run ./openfeature  # Borrowed and owned SDKs, memory provider.
 ```
 
-Tests execute every listed program and verify its output. [Browse the complete examples](examples), including [typed values and arrays](examples/typed/main.go), [variants, splits, and timed rollouts](examples/rules/main.go), and the [quick start](examples/quickstart/main.go).
+Tests execute every listed program and verify its output. [Browse the complete examples](examples), including [application structs and arrays](examples/typed/main.go), [definition validation](examples/validation/main.go), [variants, splits, and timed rollouts](examples/rules/main.go), and the [quick start](examples/quickstart/main.go).
 
 The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 

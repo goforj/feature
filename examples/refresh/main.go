@@ -23,15 +23,19 @@ func main() {
 		panic(err)
 	}
 	// snippet:start file
-	features, err := feature.Open(ctx, feature.NewFileSource(path))
+	engine, err := feature.Open(ctx, feature.NewFileSource(path))
 	if err != nil {
 		panic(err)
 	}
+	features := feature.New(engine)
 	// snippet:end file
 
 	// snippet:start snapshot
-	view := features.Snapshot()
-	fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+	view, err := features.Snapshot()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2"))
 	// Captured checkout: false
 	// snippet:end snapshot
 
@@ -43,18 +47,18 @@ func main() {
 	if err := os.Rename(next, path); err != nil {
 		panic(err)
 	}
-	if err := features.Refresh(ctx); err != nil {
+	if err := engine.Refresh(ctx); err != nil {
 		panic(err)
 	}
-	fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+	fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2"))
 	// Current checkout: true
 
-	fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+	fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2"))
 	// Captured checkout: false
 	// snippet:end refresh
 
 	// snippet:start status
-	status := features.Status()
+	status := engine.Status()
 	fmt.Println("Refresh healthy:", status.LastError == nil && !status.LastSuccess.IsZero())
 	// Refresh healthy: true
 	// snippet:end status

@@ -29,7 +29,7 @@ func newTypedFixture(t *testing.T, name string) typedFixture {
 	ctx := context.Background()
 	prefix := namespace()
 	fixture := typedFixture{prefix: prefix}
-	values := map[string]any{"string": "blue", "int": int64(12), "float": 1.25, "object": map[string]any{"color": "blue"}, "update": "before"}
+	values := map[string]any{"string": "blue", "int": int64(12), "float": 1.25, "object": map[string]any{"color": "blue", "columns": 3}, "update": "before"}
 	switch name {
 	case "native", "openfeature-native":
 		doc := feature.Document{Schema: 2, Flags: map[string]feature.Flag{}}
@@ -178,6 +178,20 @@ func TestTypedDriverConformance(t *testing.T) {
 					t.Fatal(d)
 				}
 			})
+			t.Run("application-object", func(t *testing.T) {
+				type layout struct {
+					Color   string `json:"color"`
+					Columns int    `json:"columns"`
+				}
+				result := feature.ObjectAs(ctx, scope, fixture.prefix+"object", layout{Color: "fallback", Columns: 1})
+				if result.Err != nil || result.Value.Color != "blue" || result.Value.Columns != 3 {
+					t.Fatal(result)
+				}
+				missing := feature.ObjectAs(ctx, scope, fixture.prefix+"missing", layout{Color: "fallback", Columns: 1})
+				if missing.Err != feature.ErrNotFound || missing.Value.Color != "fallback" || missing.Value.Columns != 1 {
+					t.Fatal(missing)
+				}
+			})
 			t.Run("missing", func(t *testing.T) {
 				if d := scope.String(ctx, fixture.prefix+"missing", "fallback"); d.Value != "fallback" || d.Err != feature.ErrNotFound {
 					t.Fatal(d)
@@ -199,6 +213,18 @@ func TestTypedDriverConformance(t *testing.T) {
 					t.Fatal("typed cancellation lost")
 				}
 			})
+			var snapshot *feature.Features
+			t.Run("snapshot-capability", func(t *testing.T) {
+				var err error
+				snapshot, err = fixture.flags.Snapshot()
+				if name == "native" {
+					if err != nil || snapshot.String(ctx, fixture.prefix+"update", "fallback").Value != "before" {
+						t.Fatal(snapshot, err)
+					}
+				} else if err != feature.ErrUnsupported || snapshot != nil {
+					t.Fatal("SDK claimed immutable state", snapshot, err)
+				}
+			})
 			t.Run("live-update", func(t *testing.T) {
 				eventually(t, func() bool {
 					d := scope.String(ctx, fixture.prefix+"update", "fallback")
@@ -209,6 +235,9 @@ func TestTypedDriverConformance(t *testing.T) {
 					d := scope.String(ctx, fixture.prefix+"update", "fallback")
 					return d.Value == "after" && d.Err == nil
 				})
+				if snapshot != nil && snapshot.String(ctx, fixture.prefix+"update", "fallback").Value != "before" {
+					t.Fatal("captured facade adopted live update")
+				}
 			})
 		})
 	}

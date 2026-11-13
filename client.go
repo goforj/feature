@@ -28,6 +28,7 @@ type Status struct {
 
 // Client owns immutable snapshots and borrows a required Source without closing it.
 // Construct clients with Open; a zero Client is not initialized.
+// Application services normally read through New(client); retain Client for source lifecycle.
 type Client struct {
 	source      Source
 	gate        chan struct{}

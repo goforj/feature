@@ -99,7 +99,7 @@ func TestGenerateNavigation(t *testing.T) {
 		t.Fatal("unresolved marker")
 	}
 	quickstart := strings.SplitN(strings.SplitN(readme, "## Quick start\n", 2)[1], "\n## Available sources", 2)[0]
-	for _, text := range []string{"flags.Enabled(", "flags.String(", "flags.Int(", "flags.Float(", "flags.Object(", "engine.Snapshot()", "source.Replace(document)", "engine.Refresh(ctx)", "// Theme: midnight\n\n", "// Live theme: sunrise\n\n", "// Captured request theme: midnight"} {
+	for _, text := range []string{"flags.Enabled(", "flags.String(", "flags.Int(", "flags.Float(", "feature.ObjectAs(", "features.Snapshot()", "source.Replace(document)", "engine.Refresh(ctx)", "// Theme: midnight\n\n", "// Live theme: sunrise\n\n", "// Captured request theme: midnight"} {
 		if !strings.Contains(quickstart, text) {
 			t.Fatal("quick start is missing a typed, refresh, or spacing demonstration", text)
 		}

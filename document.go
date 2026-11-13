@@ -90,6 +90,7 @@ type Rollout struct {
 }
 
 // Subject identifies the rollout unit and exact string attributes for a decision.
+// It supports direct native calls; application-facing Features and Scope use Target.
 type Subject struct {
 	Key        string
 	Attributes map[string]string

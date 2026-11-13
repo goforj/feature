@@ -17,15 +17,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	features, err := feature.Open(ctx, source)
+	engine, err := feature.Open(ctx, source)
 	if err != nil {
 		panic(err)
 	}
+	features := feature.New(engine)
 	// snippet:start run
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- features.Run(runCtx, 20*time.Millisecond) }()
+	go func() { done <- engine.Run(runCtx, 20*time.Millisecond) }()
 	// snippet:end run
 
 	// snippet:start replace
@@ -42,14 +43,14 @@ func main() {
 	defer deadline.Stop()
 	tick := time.NewTicker(5 * time.Millisecond)
 	defer tick.Stop()
-	for !features.Enabled(ctx, "checkout-v2", false, feature.Subject{}) {
+	for !features.Enabled(ctx, "checkout-v2") {
 		select {
 		case <-deadline.C:
 			panic("refresh did not converge")
 		case <-tick.C:
 		}
 	}
-	fmt.Println("Live checkout:", features.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+	fmt.Println("Live checkout:", features.Enabled(ctx, "checkout-v2"))
 	// Live checkout: true
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {

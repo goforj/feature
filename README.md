@@ -60,7 +60,8 @@ target := feature.Target{
 	Key:        "tenant:acme",
 	Attributes: map[string]any{"plan": "pro"},
 }
-flags := feature.New(engine).For(target)
+features := feature.New(engine)
+flags := features.For(target)
 fmt.Println("New checkout:", flags.Enabled(ctx, "checkout-v2"))
 // New checkout: true
 
@@ -73,15 +74,22 @@ fmt.Println("Page size:", flags.Int(ctx, "page-size", 25).Value)
 fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 // Sample rate: 0.25
 
-layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
-fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
+type layoutConfig struct {
+	Columns int `json:"columns"`
+}
+layout := feature.ObjectAs(ctx, flags, "layout", layoutConfig{Columns: 1})
+fmt.Println("Columns:", layout.Value.Columns)
 // Columns: 3
 ```
 
 Change the theme in the same process. New decisions adopt the update; a captured request keeps its original revision:
 
 ```go
-request := feature.New(engine.Snapshot()).For(target)
+snapshot, err := features.Snapshot()
+if err != nil {
+	panic(err)
+}
+request := snapshot.For(target)
 document.Flags["theme"] = feature.Flag{Default: "sunrise"}
 if err := source.Replace(document); err != nil {
 	panic(err)
@@ -95,6 +103,8 @@ fmt.Println("Live theme:", flags.String(ctx, "theme", "classic").Value)
 fmt.Println("Captured request theme:", request.String(ctx, "theme", "classic").Value)
 // Captured request theme: midnight
 ```
+
+Application services use `Features` and `Scope`. Keep the native engine at startup for `Refresh`, `Run`, and `Status`. `Features.Snapshot` retains observer and tracking configuration; SDK drivers without genuine snapshots return `ErrUnsupported`.
 
 Use a file or HTTP source with the same engine to load external definitions. Refresh explicitly or run a caller-owned polling loop. The [refresh](examples/refresh/main.go) and [polling](examples/polling/main.go) examples show both workflows.
 
@@ -137,7 +147,8 @@ Run from the repository root:
 ```sh
 go -C examples run ./quickstart   # Typed flags, tenant targeting, live updates, and snapshots.
 go -C examples run ./portable     # Portable checks and typed request targeting.
-go -C examples run ./typed        # Strings, integers, floats, objects, arrays, and fallbacks.
+go -C examples run ./typed        # Typed flags, application structs, arrays, and fallbacks.
+go -C examples run ./validation   # Definition paths and safe authoring diagnostics.
 go -C examples run ./rules        # Typed targeting, variants, weighted splits, and timed rollouts.
 go -C examples run ./events       # Observability, tracking, and change subscriptions.
 go -C examples run ./http         # HTTP configuration and webhook delivery.
@@ -149,7 +160,7 @@ go -C examples run ./launchdarkly # Borrowed and owned SDK adapters, offline dat
 go -C examples run ./openfeature  # Borrowed and owned SDKs, memory provider.
 ```
 
-Tests execute every listed program and verify its output. [Browse the complete examples](examples), including [typed values and arrays](examples/typed/main.go), [variants, splits, and timed rollouts](examples/rules/main.go), and the [quick start](examples/quickstart/main.go).
+Tests execute every listed program and verify its output. [Browse the complete examples](examples), including [application structs and arrays](examples/typed/main.go), [definition validation](examples/validation/main.go), [variants, splits, and timed rollouts](examples/rules/main.go), and the [quick start](examples/quickstart/main.go).
 
 The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 
@@ -166,7 +177,8 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 | Group | Functions |
 | ---: | :--- |
 | **Portable evaluation** | [New](#api-new) · [Features.For](#api-features.for) · [Features.Enabled](#api-features.enabled) · [Scope.Evaluate](#api-scope.evaluate) |
-| **Typed evaluation** | [Features.String](#api-features.string) · [Features.Int](#api-features.int) · [Features.Float](#api-features.float) · [Features.Object](#api-features.object) |
+| **Typed evaluation** | [Features.String](#api-features.string) · [Features.Int](#api-features.int) · [Features.Float](#api-features.float) · [Features.Object](#api-features.object) · [ObjectAs](#api-objectas) |
+| **Definitions** | [Validate](#api-validate) |
 | **Native rules** | [WithClock](#api-withclock) |
 | **Observability** | [WithEventSink](#api-witheventsink) · [WithObserver](#api-withobserver) · [Features.SupportsTracking](#api-features.supportstracking) · [Features.Track](#api-features.track) · [Scope.Track](#api-scope.track) |
 | **Changes** | [Subscribe](#api-subscribe) |
@@ -174,8 +186,8 @@ The [portable example](examples/portable/main.go) shows the application-facing F
 | **LaunchDarkly** | [launchdarklyfeature.New](#api-launchdarklyfeature.new) · [launchdarklyfeature.Open](#api-launchdarklyfeature.open) |
 | **OpenFeature** | [openfeaturefeature.Open](#api-openfeaturefeature.open) · [openfeaturefeature.New](#api-openfeaturefeature.new) · [openfeaturefeature.NewProvider](#api-openfeaturefeature.newprovider) |
 | **Construction** | [NewMemorySource](#api-newmemorysource) · [Open](#api-open) |
-| **Evaluation** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
-| **Consistency** | [Snapshot](#api-snapshot) |
+| **Native compatibility** | [Enabled](#api-enabled) · [Evaluate](#api-evaluate) |
+| **Consistency** | [Features.Snapshot](#api-features.snapshot) |
 | **Sources** | [Decode](#api-decode) · [NewFileSource](#api-newfilesource) |
 | **Refresh** | [Replace](#api-replace) · [Refresh](#api-refresh) · [Run](#api-run) |
 | **Inspection** | [Status](#api-status) |
@@ -256,6 +268,56 @@ fmt.Println("Menu:", flags.Object(ctx, "menu", []any{}).Value)
 // Menu: [home billing]
 ```
 
+<a id="api-objectas"></a>
+
+### ObjectAs
+
+ObjectAs decodes an object or array flag into an application type using JSON tags. It preserves decision metadata and returns an owned fallback on resolution or decoding failure. Decoding errors are ErrInvalidValue, without field names or source contents. Fallbacks must encode as bounded JSON objects or arrays; unknown fields are ignored. Numbers in interface fields use json.Number to avoid silently rounding native integers. Concrete fields follow encoding/json conversions; use int64 or json.Number for exact integers. Results and owned fallbacks contain only their JSON-visible representation. Custom JSON marshalers and unmarshalers are application-owned code.
+
+```go
+type layoutConfig struct {
+	Columns int `json:"columns"`
+}
+layoutResult := feature.ObjectAs(ctx, flags, "layout", layoutConfig{Columns: 1})
+fmt.Println("Typed columns:", layoutResult.Value.Columns)
+// Typed columns: 2
+
+menu := feature.ObjectAs(ctx, flags.For(feature.Target{Key: "tenant:acme"}), "menu", []string{"home"})
+fmt.Println("Typed menu:", menu.Value)
+// Typed menu: [home billing]
+```
+
+## Definitions
+
+<a id="api-validate"></a>
+
+### Validate
+
+Validate checks the same complete definition accepted by Open, Encode, and Replace. Invalid definitions return a ValidationError describing one identified problem. Diagnostics are deterministic and bounded, and never publish or mutate the document. Runtime source operations continue to return only ErrInvalidDocument.
+
+```go
+document := feature.Document{
+	Schema: feature.TypedSchemaVersion,
+	Flags: map[string]feature.Flag{
+		"theme": {DefaultVariant: "missing"},
+	},
+}
+if err := feature.Validate(document); err != nil {
+	var issue *feature.ValidationError
+	if !errors.As(err, &issue) {
+		panic(err)
+	}
+	fmt.Println("Definition path:", issue.Path)
+	// Definition path: /flags/theme/default_variant
+
+	fmt.Println("Problem:", issue.Problem)
+	// Problem: default variant must reference the flag's variant catalog
+
+	fmt.Println("Runtime classification:", err)
+	// Runtime classification: feature: invalid document
+}
+```
+
 ## Native rules
 
 <a id="api-withclock"></a>
@@ -270,7 +332,8 @@ if err != nil {
 	panic(err)
 }
 target := feature.Target{Key: "tenant:acme", Attributes: map[string]any{"paid": true, "seats": 12}}
-flags := feature.New(engine).For(target)
+features := feature.New(engine)
+flags := features.For(target)
 fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 // Paid tenant theme: green
 
@@ -278,7 +341,11 @@ experiment := flags.String(ctx, "experiment", "blue")
 fmt.Println("Weighted experiment:", experiment.Value, experiment.Variant)
 // Weighted experiment: blue control
 
-request := feature.New(engine.Snapshot()).For(target)
+snapshot, err := features.Snapshot()
+if err != nil {
+	panic(err)
+}
+request := snapshot.For(target)
 now = start
 fmt.Println("Scheduled launch:", flags.Enabled(ctx, "launch"))
 // Scheduled launch: true
@@ -557,7 +624,7 @@ if err != nil {
 }
 ```
 
-## Evaluation
+## Native compatibility
 
 <a id="api-enabled"></a>
 
@@ -585,15 +652,18 @@ fmt.Println("Unknown feature:", decision.Value, decision.Reason)
 
 ## Consistency
 
-<a id="api-snapshot"></a>
+<a id="api-features.snapshot"></a>
 
-### Snapshot
+### Features.Snapshot
 
-Snapshot captures the complete current revision without waiting for source I/O.
+Snapshot captures native definitions and evaluation time while preserving observer and tracker policy. Capturing an existing native View is idempotent. Evaluators without native snapshot support return ErrUnsupported; a vendor SDK scope is never presented as frozen state. The returned facade borrows the same observer and tracking sink as its parent.
 
 ```go
-view := features.Snapshot()
-fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+view, err := features.Snapshot()
+if err != nil {
+	panic(err)
+}
+fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2"))
 // Captured checkout: false
 ```
 
@@ -631,10 +701,11 @@ if err != nil {
 NewFileSource captures a path without accessing the filesystem. Use a stable absolute path when application code may change its working directory.
 
 ```go
-features, err := feature.Open(ctx, feature.NewFileSource(path))
+engine, err := feature.Open(ctx, feature.NewFileSource(path))
 if err != nil {
 	panic(err)
 }
+features := feature.New(engine)
 ```
 
 ## Refresh
@@ -669,13 +740,13 @@ if err := os.WriteFile(next, []byte(`{"schema":1,"flags":{"checkout-v2":{"defaul
 if err := os.Rename(next, path); err != nil {
 	panic(err)
 }
-if err := features.Refresh(ctx); err != nil {
+if err := engine.Refresh(ctx); err != nil {
 	panic(err)
 }
-fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+fmt.Println("Current checkout:", features.Enabled(ctx, "checkout-v2"))
 // Current checkout: true
 
-fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2", false, feature.Subject{}))
+fmt.Println("Captured checkout:", view.Enabled(ctx, "checkout-v2"))
 // Captured checkout: false
 ```
 
@@ -689,7 +760,7 @@ Run refreshes on ticks until cancellation, retaining valid state after load erro
 runCtx, cancel := context.WithCancel(ctx)
 defer cancel()
 done := make(chan error, 1)
-go func() { done <- features.Run(runCtx, 20*time.Millisecond) }()
+go func() { done <- engine.Run(runCtx, 20*time.Millisecond) }()
 ```
 
 ## Inspection
@@ -701,7 +772,7 @@ go func() { done <- features.Run(runCtx, 20*time.Millisecond) }()
 Status returns a detached freshness record; view evaluations are intentionally uncounted.
 
 ```go
-status := features.Status()
+status := engine.Status()
 fmt.Println("Refresh healthy:", status.LastError == nil && !status.LastSuccess.IsZero())
 // Refresh healthy: true
 ```

@@ -33,15 +33,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	features, err := feature.Open(ctx, source)
+	engine, err := feature.Open(ctx, source)
 	if err != nil {
 		panic(err)
 	}
-	subject := feature.Subject{Key: "tenant:demo-2", Attributes: map[string]string{"plan": "pro"}}
-	fmt.Println("Pro tenant:", features.Enabled(ctx, "checkout-v2", false, subject))
+	features := feature.New(engine)
+	subject := feature.Target{Key: "tenant:demo-2", Attributes: map[string]any{"plan": "pro"}}
+	fmt.Println("Pro tenant:", features.For(subject).Enabled(ctx, "checkout-v2"))
 	// Pro tenant: true
 	subject.Attributes["plan"] = "free"
-	fmt.Println("Free tenant:", features.Enabled(ctx, "checkout-v2", false, subject))
+	fmt.Println("Free tenant:", features.For(subject).Enabled(ctx, "checkout-v2"))
 	// Free tenant: false
 }
 
