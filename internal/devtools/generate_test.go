@@ -98,6 +98,12 @@ func TestGenerateNavigation(t *testing.T) {
 	if strings.Contains(readme, "{{") {
 		t.Fatal("unresolved marker")
 	}
+	quickstart := strings.SplitN(strings.SplitN(readme, "## Quick start\n", 2)[1], "\n## Available sources", 2)[0]
+	for _, text := range []string{"flags.Enabled(", "flags.String(", "flags.Int(", "flags.Float(", "flags.Object(", "engine.Snapshot()", "source.Replace(document)", "engine.Refresh(ctx)", "// Theme: midnight\n\n", "// Live theme: sunrise\n\n", "// Captured request theme: midnight"} {
+		if !strings.Contains(quickstart, text) {
+			t.Fatal("quick start is missing a typed, refresh, or spacing demonstration", text)
+		}
+	}
 	features := strings.SplitN(strings.SplitN(readme, "## Features\n", 2)[1], "\n## Quick start", 2)[0]
 	if strings.Count(features, `width="18" height="18" alt="" align="absmiddle"`) != 4 ||
 		strings.Count(features, `<td width="38%" valign="middle">`) != 4 || strings.Contains(features, "nowrap") {
@@ -136,11 +142,19 @@ func TestGenerateFailures(t *testing.T) {
 			change(t, root, "docs/unit-results.json", `"covered_statements":1`, `"covered_statements":0`)
 		}, "exactly 100"},
 		{"operation", func(t *testing.T, root string) {
-			change(t, root, "examples/quickstart/main.go", "features.Enabled(", "features.Other(")
+			change(t, root, "examples/quickstart/main.go", "engine.Enabled(", "engine.Other(")
 			recordFixture(t, root)
 		}, "does not demonstrate"},
 		{"snippet", func(t *testing.T, root string) {
 			change(t, root, "examples/quickstart/main.go", "snippet:end enabled", "snippet:end absent")
+			recordFixture(t, root)
+		}, "complete snippet"},
+		{"quickstart values", func(t *testing.T, root string) {
+			change(t, root, "examples/quickstart/main.go", "snippet:end quickstart-values", "snippet:end absent")
+			recordFixture(t, root)
+		}, "complete snippet"},
+		{"quickstart refresh", func(t *testing.T, root string) {
+			change(t, root, "examples/quickstart/main.go", "snippet:end quickstart-refresh", "snippet:end absent")
 			recordFixture(t, root)
 		}, "complete snippet"},
 		{"godoc", func(t *testing.T, root string) {

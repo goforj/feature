@@ -12,7 +12,11 @@ import (
 func main() {
 	ctx := context.Background()
 	document := feature.Document{Schema: feature.TypedSchemaVersion, Flags: map[string]feature.Flag{
-		"theme": {Default: "classic"}, "page-size": {Default: 25}, "sample-rate": {Default: 0.25}, "layout": {Default: map[string]any{"columns": 2}},
+		"theme":       {Default: "classic"},
+		"page-size":   {Default: 25},
+		"sample-rate": {Default: 0.25},
+		"layout":      {Default: map[string]any{"columns": 2}},
+		"menu":        {Default: []any{"home", "billing"}},
 	}}
 	encoded, err := feature.Encode(document)
 	if err != nil {
@@ -44,6 +48,9 @@ func main() {
 	layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
 	fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
 	// Columns: 2
+
+	fmt.Println("Menu:", flags.Object(ctx, "menu", []any{}).Value)
+	// Menu: [home billing]
 	// snippet:end typed-values
 }
 
@@ -52,3 +59,4 @@ func main() {
 // Page size: 25
 // Sample rate: 0.25
 // Columns: 2
+// Menu: [home billing]

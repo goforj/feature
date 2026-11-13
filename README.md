@@ -2,7 +2,7 @@
 <p align="center">
   <img src="docs/assets/logo.png" width="300" alt="feature: a Go gopher with a feature flag">
 </p>
-<p align="center">Live feature decisions for Go, with stable rollouts and consistent snapshots.</p>
+<p align="center">Typed feature flags for Go, with targeted rollouts, live updates, and consistent request snapshots.</p>
 <p align="center">
   <a href="https://github.com/goforj/feature/actions/workflows/ci.yml"><img src="docs/assets/ci.svg" alt="CI workflow prepared"></a>
   <a href="https://github.com/goforj/feature/actions/workflows/security.yml"><img src="docs/assets/security.svg" alt="Security workflow prepared"></a>
@@ -28,39 +28,82 @@
 
 ## Quick start
 
-The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the canonical example:
+Enable checkout for pro tenants and read typed settings through one request scope. Every typed read takes an explicit fallback:
+
+```go
+ctx := context.Background()
+document := feature.Document{
+	Schema: feature.TypedSchemaVersion,
+	Flags: map[string]feature.Flag{
+		"checkout-v2": {
+			Default: false,
+			Rules: []feature.Rule{
+				{Attributes: map[string]string{"plan": "pro"}, Value: true},
+			},
+		},
+		"theme":       {Default: "midnight"},
+		"page-size":   {Default: 50},
+		"sample-rate": {Default: 0.25},
+		"layout":      {Default: map[string]any{"columns": 3}},
+	},
+}
+source, err := feature.NewMemorySource(document)
+if err != nil {
+	panic(err)
+}
+engine, err := feature.Open(ctx, source)
+if err != nil {
+	panic(err)
+}
+
+target := feature.Target{
+	Key:        "tenant:acme",
+	Attributes: map[string]any{"plan": "pro"},
+}
+flags := feature.New(engine).For(target)
+fmt.Println("New checkout:", flags.Enabled(ctx, "checkout-v2"))
+// New checkout: true
+
+fmt.Println("Theme:", flags.String(ctx, "theme", "classic").Value)
+// Theme: midnight
+
+fmt.Println("Page size:", flags.Int(ctx, "page-size", 25).Value)
+// Page size: 50
+
+fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
+// Sample rate: 0.25
+
+layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
+fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
+// Columns: 3
+```
+
+Change the theme in the same process. New decisions adopt the update; a captured request keeps its original revision:
+
+```go
+request := feature.New(engine.Snapshot()).For(target)
+document.Flags["theme"] = feature.Flag{Default: "sunrise"}
+if err := source.Replace(document); err != nil {
+	panic(err)
+}
+if err := engine.Refresh(ctx); err != nil {
+	panic(err)
+}
+fmt.Println("Live theme:", flags.String(ctx, "theme", "classic").Value)
+// Live theme: sunrise
+
+fmt.Println("Captured request theme:", request.String(ctx, "theme", "classic").Value)
+// Captured request theme: midnight
+```
+
+Use a file or HTTP source with the same engine to load external definitions. Refresh explicitly or run a caller-owned polling loop. The [refresh](examples/refresh/main.go) and [polling](examples/polling/main.go) examples show both workflows.
+
+The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the complete example:
 
 ```sh
 git clone https://github.com/goforj/feature.git
 cd feature
 go -C examples run ./quickstart
-```
-
-The example constructs an injected client, then enables checkout for a selected tenant:
-
-```go
-source, err := feature.NewMemorySource(feature.Document{
-	Schema: feature.SchemaVersion,
-	Flags: map[string]feature.Flag{
-		"checkout-v2": {
-			Default: false,
-			Rules: []feature.Rule{
-				{Subjects: []string{"tenant:acme"}, Value: true},
-			},
-		},
-	},
-})
-if err != nil {
-	panic(err)
-}
-features, err := feature.Open(ctx, source)
-if err != nil {
-	panic(err)
-}
-
-subject := feature.Subject{Key: "tenant:acme"}
-fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject))
-// New checkout: true
 ```
 
 ## Available sources
@@ -92,10 +135,10 @@ Every runtime module requires exact 100% unit statement coverage. The separate [
 Run from the repository root:
 
 ```sh
-go -C examples run ./quickstart   # Identity targeting and explicit fallback.
+go -C examples run ./quickstart   # Typed flags, tenant targeting, live updates, and snapshots.
 go -C examples run ./portable     # Portable checks and typed request targeting.
-go -C examples run ./typed        # Typed values and explicit fallbacks.
-go -C examples run ./rules        # Typed targeting, variants, and timed rollouts.
+go -C examples run ./typed        # Strings, integers, floats, objects, arrays, and fallbacks.
+go -C examples run ./rules        # Typed targeting, variants, weighted splits, and timed rollouts.
 go -C examples run ./events       # Observability, tracking, and change subscriptions.
 go -C examples run ./http         # HTTP configuration and webhook delivery.
 go -C examples run ./native-provider # Native engine through an ordinary OpenFeature SDK.
@@ -106,7 +149,7 @@ go -C examples run ./launchdarkly # Borrowed and owned SDK adapters, offline dat
 go -C examples run ./openfeature  # Borrowed and owned SDKs, memory provider.
 ```
 
-Tests execute these programs and verify their output. Their source is authoritative: [quickstart](examples/quickstart/main.go), [targeting](examples/targeting/main.go), [refresh](examples/refresh/main.go), [polling](examples/polling/main.go), [LaunchDarkly](examples/launchdarkly/main.go), [OpenFeature](examples/openfeature/main.go).
+Tests execute every listed program and verify its output. [Browse the complete examples](examples), including [typed values and arrays](examples/typed/main.go), [variants, splits, and timed rollouts](examples/rules/main.go), and the [quick start](examples/quickstart/main.go).
 
 The [portable example](examples/portable/main.go) shows the application-facing Features API. Native Client retains explicit source refresh and snapshot operations; Features borrows any Evaluator and provides short checks and owned targeting scopes.
 
@@ -208,6 +251,9 @@ fmt.Println("Sample rate:", flags.Float(ctx, "sample-rate", 0).Value)
 layout := flags.Object(ctx, "layout", map[string]any{"columns": 1})
 fmt.Println("Columns:", layout.Value.(map[string]any)["columns"])
 // Columns: 2
+
+fmt.Println("Menu:", flags.Object(ctx, "menu", []any{}).Value)
+// Menu: [home billing]
 ```
 
 ## Native rules
@@ -227,6 +273,10 @@ target := feature.Target{Key: "tenant:acme", Attributes: map[string]any{"paid": 
 flags := feature.New(engine).For(target)
 fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 // Paid tenant theme: green
+
+experiment := flags.String(ctx, "experiment", "blue")
+fmt.Println("Weighted experiment:", experiment.Value, experiment.Variant)
+// Weighted experiment: blue control
 
 request := feature.New(engine.Snapshot()).For(target)
 now = start
@@ -481,21 +531,27 @@ NewMemorySource validates and copies a document without starting background work
 Open loads and validates the initial document synchronously without starting workers.
 
 ```go
-source, err := feature.NewMemorySource(feature.Document{
-	Schema: feature.SchemaVersion,
+ctx := context.Background()
+document := feature.Document{
+	Schema: feature.TypedSchemaVersion,
 	Flags: map[string]feature.Flag{
 		"checkout-v2": {
 			Default: false,
 			Rules: []feature.Rule{
-				{Subjects: []string{"tenant:acme"}, Value: true},
+				{Attributes: map[string]string{"plan": "pro"}, Value: true},
 			},
 		},
+		"theme":       {Default: "midnight"},
+		"page-size":   {Default: 50},
+		"sample-rate": {Default: 0.25},
+		"layout":      {Default: map[string]any{"columns": 3}},
 	},
-})
+}
+source, err := feature.NewMemorySource(document)
 if err != nil {
 	panic(err)
 }
-features, err := feature.Open(ctx, source)
+engine, err := feature.Open(ctx, source)
 if err != nil {
 	panic(err)
 }
@@ -510,9 +566,9 @@ if err != nil {
 Enabled returns a local decision and counts fallback failures without recording keys.
 
 ```go
-subject := feature.Subject{Key: "tenant:acme"}
-fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject))
-// New checkout: true
+subject := feature.Subject{Key: "tenant:acme", Attributes: map[string]string{"plan": "pro"}}
+fmt.Println("Native checkout:", engine.Enabled(ctx, "checkout-v2", false, subject))
+// Native checkout: true
 ```
 
 <a id="api-evaluate"></a>
@@ -522,7 +578,7 @@ fmt.Println("New checkout:", features.Enabled(ctx, "checkout-v2", false, subject
 Evaluate explains a decision against the latest published snapshot.
 
 ```go
-decision := features.Evaluate(ctx, "unknown-feature", false, subject)
+decision := engine.Evaluate(ctx, "unknown-feature", false, subject)
 fmt.Println("Unknown feature:", decision.Value, decision.Reason)
 // Unknown feature: false missing
 ```

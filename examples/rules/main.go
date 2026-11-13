@@ -15,10 +15,43 @@ func main() {
 	start := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
 	end := start.Add(time.Hour)
 	now := start.Add(-time.Second)
-	document := feature.Document{Schema: 2, Flags: map[string]feature.Flag{
-		"theme":   {Variants: map[string]any{"control": "blue", "treatment": "green"}, DefaultVariant: "control", Rules: []feature.Rule{{Conditions: []feature.Condition{{Attribute: "paid", Operator: feature.OpEqual, Value: true}, {Attribute: "seats", Operator: feature.OpGreaterOrEqual, Value: 10}}, Variant: "treatment"}}},
-		"launch":  {Default: false, Rules: []feature.Rule{{Start: &start, End: &end, Value: true}}},
-		"rollout": {Default: false, Rules: []feature.Rule{{Rollout: &feature.Rollout{Salt: "launch-v1", Progressive: &feature.Progressive{Start: start, End: end, From: 0, To: 10000}}, Value: true}}},
+	document := feature.Document{Schema: feature.TypedSchemaVersion, Flags: map[string]feature.Flag{
+		"theme": {
+			Variants:       map[string]any{"control": "blue", "treatment": "green"},
+			DefaultVariant: "control",
+			Rules: []feature.Rule{{
+				Conditions: []feature.Condition{
+					{Attribute: "paid", Operator: feature.OpEqual, Value: true},
+					{Attribute: "seats", Operator: feature.OpGreaterOrEqual, Value: 10},
+				},
+				Variant: "treatment",
+			}},
+		},
+		"experiment": {
+			Variants:       map[string]any{"control": "blue", "treatment": "green"},
+			DefaultVariant: "control",
+			Rules: []feature.Rule{{Split: &feature.Split{
+				Salt: "theme-experiment-v1",
+				Allocations: []feature.Allocation{
+					{Variant: "control", BasisPoints: 7500},
+					{Variant: "treatment", BasisPoints: 2500},
+				},
+			}}},
+		},
+		"launch": {
+			Default: false,
+			Rules:   []feature.Rule{{Start: &start, End: &end, Value: true}},
+		},
+		"rollout": {
+			Default: false,
+			Rules: []feature.Rule{{
+				Rollout: &feature.Rollout{
+					Salt:        "launch-v1",
+					Progressive: &feature.Progressive{Start: start, End: end, From: 0, To: 10000},
+				},
+				Value: true,
+			}},
+		},
 	}}
 	source, err := feature.NewMemorySource(document)
 	if err != nil {
@@ -33,6 +66,10 @@ func main() {
 	flags := feature.New(engine).For(target)
 	fmt.Println("Paid tenant theme:", flags.String(ctx, "theme", "classic").Value)
 	// Paid tenant theme: green
+
+	experiment := flags.String(ctx, "experiment", "blue")
+	fmt.Println("Weighted experiment:", experiment.Value, experiment.Variant)
+	// Weighted experiment: blue control
 
 	request := feature.New(engine.Snapshot()).For(target)
 	now = start
@@ -50,6 +87,7 @@ func main() {
 
 // Output:
 // Paid tenant theme: green
+// Weighted experiment: blue control
 // Scheduled launch: true
 // Rollout at completion: true
 // Captured request launch: false

@@ -303,11 +303,15 @@ func Generate(root string) error {
 	if err != nil {
 		return err
 	}
-	enabled, err := Snippet(root, "quickstart", "enabled")
+	values, err := Snippet(root, "quickstart", "quickstart-values")
 	if err != nil {
 		return err
 	}
-	readme := strings.NewReplacer("{{QUICKSTART}}", construction+"\n\n"+enabled, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
+	refresh, err := Snippet(root, "quickstart", "quickstart-refresh")
+	if err != nil {
+		return err
+	}
+	readme := strings.NewReplacer("{{QUICKSTART}}", construction+"\n\n"+values, "{{QUICKSTART_REFRESH}}", refresh, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
 	if strings.Contains(readme, "{{") {
 		return errors.New("unresolved template marker")
 	}
