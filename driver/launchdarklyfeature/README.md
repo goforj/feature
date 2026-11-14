@@ -15,7 +15,7 @@ String, Int, Float, and Object provide typed decisions through the same scoped c
 Install the independently versioned module:
 
 ```sh
-go get github.com/goforj/feature/driver/launchdarklyfeature@v0.1.0
+go get github.com/goforj/feature/driver/launchdarklyfeature
 ```
 
 Run from the repository checkout:

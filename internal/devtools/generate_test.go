@@ -98,8 +98,8 @@ func TestGenerateNavigation(t *testing.T) {
 	if strings.Contains(readme, "{{") {
 		t.Fatal("unresolved marker")
 	}
-	if !strings.Contains(readme, "go get github.com/goforj/feature@"+releaseVersion) || !strings.Contains(readme, `alt="Release `+releaseVersion+`"`) {
-		t.Fatal("release version differs between badge and installation guidance")
+	if !strings.Contains(readme, "go get github.com/goforj/feature\n") || !strings.Contains(readme, `alt="Release `+releaseVersion+`"`) {
+		t.Fatal("missing standard installation command or release badge")
 	}
 	quickstart := strings.SplitN(strings.SplitN(readme, "## Quick start\n", 2)[1], "\n## Available sources", 2)[0]
 	for _, text := range []string{"flags.Enabled(", "flags.String(", "flags.Int(", "flags.Float(", "feature.ObjectAs(", "features.Snapshot()", "source.Replace(document)", "engine.Refresh(ctx)", "// Theme: midnight\n\n", "// Live theme: sunrise\n\n", "// Captured request theme: midnight"} {

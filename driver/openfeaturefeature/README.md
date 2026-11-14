@@ -13,7 +13,7 @@ This adapter supports boolean, string, integer, float, and structured evaluation
 Install the independently versioned module:
 
 ```sh
-go get github.com/goforj/feature/driver/openfeaturefeature@v0.1.0
+go get github.com/goforj/feature/driver/openfeaturefeature
 ```
 
 Run from the repository checkout:

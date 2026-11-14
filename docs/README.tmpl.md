@@ -47,14 +47,14 @@ Use a file or HTTP source with the same engine to load external definitions. Ref
 The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. Install the root module:
 
 ```sh
-go get github.com/goforj/feature@{{VERSION}}
+go get github.com/goforj/feature
 ```
 
 Optional SDK modules are independently versioned:
 
 ```sh
-go get github.com/goforj/feature/driver/launchdarklyfeature@{{VERSION}}
-go get github.com/goforj/feature/driver/openfeaturefeature@{{VERSION}}
+go get github.com/goforj/feature/driver/launchdarklyfeature
+go get github.com/goforj/feature/driver/openfeaturefeature
 ```
 
 Clone and run the complete example:
