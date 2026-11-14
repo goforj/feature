@@ -1,12 +1,12 @@
 # Verification record
 
-The latest [multi-pass review](review.md) records reproduced lifecycle fixes, coverage-gate hardening, compatibility decisions, and remaining publication work.
+The latest [multi-pass review](review.md) records reproduced lifecycle fixes, coverage-gate hardening, and compatibility decisions. The [v0.1.0 release record](release-readiness.md) records completed public publication and real-App adoption; the source-consumer sections below preserve historical verification.
 
-The standalone library includes native memory/file/HTTP evaluation, a portable typed facade, optional direct LaunchDarkly and OpenFeature SDK adapters, and a native OpenFeature provider. Typed targeting, variants, weighted splits, scheduled/progressive rollouts, and observable event delivery are implemented. Framework wiring, hosted account verification, and release publication remain separate work.
+The standalone library includes native memory/file/HTTP evaluation, a portable typed facade, optional direct LaunchDarkly and OpenFeature SDK adapters, and a native OpenFeature provider. Typed targeting, variants, weighted splits, scheduled/progressive rollouts, and observable event delivery are implemented. Generated framework wiring and hosted account verification remain separate work.
 
 ## Executed checks
 
-The runtime unit gate requires exact **100% statement coverage** across the root and both driver modules. It runs all twelve canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the current covered and total statement counts, source fingerprint, toolchain, and actual case count.
+The runtime unit gate requires exact **100% statement coverage** across the root and both driver modules. It runs all thirteen canonical programs, checks their output, and collects subprocess coverage. Integration execution never supplies missing unit coverage. [Unit evidence](unit-results.json) records the current covered and total statement counts, source fingerprint, toolchain, and actual case count.
 
 The [integration evidence](integration-results.json) records the current passing cases with race detection. Real, digest-pinned GO Feature Flag and official LaunchDarkly Relay containers serve the SDKs. Tests verify both running versions, a ten-case boolean contract across five configurations and an eight-case typed contract across six configurations, real container pause/resume, rejected credentials and initialization, typed attributes, malformed HTTP success, in-flight cancellation, updates, deletion and recreation, and shutdown. Successful false updates are checked with an opposing fallback and no evaluation error. File tests preserve coherent request snapshots during concurrent refresh and recover after malformed documents and deletion.
 
@@ -67,7 +67,7 @@ The adapter-only checks did not force-upgrade the root, so they also validate ea
 - Failure safety: structured errors preserve explicit fallbacks and safe classifications rather than upstream diagnostics. Refresh retains valid native snapshots. Outages and malformed responses are tested separately from missing flags.
 - Documentation: SDK constructors have executable examples and generated API-index destinations. Generator tests reject unrelated constructors sharing the same name. Unit and integration reports remain separate and tied to tested source.
 
-Hosted LaunchDarkly verification, real GoForj App adoption, framework integration, external Codecov setup, public distribution, and releases remain pending in the [roadmap](roadmap.md).
+At that historical check, hosted LaunchDarkly verification, real GoForj App adoption, framework integration, external Codecov setup, public distribution, and releases were pending. The current [roadmap](roadmap.md) and [release record](release-readiness.md) distinguish completed adoption/publication from remaining work.
 
 ## Renewed notification-boundary consumer verification
 

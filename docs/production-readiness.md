@@ -1,6 +1,6 @@
 # Standalone production readiness
 
-This assessment covers the dependency-free native library and the optional LaunchDarkly and OpenFeature modules, used within their documented contracts. It does not claim framework integration, hosted LaunchDarkly account verification, a public release, or complete OpenFeature specification conformance.
+This assessment covers the dependency-free native library and the optional LaunchDarkly and OpenFeature modules, used within their documented contracts. All three modules are publicly released at v0.1.0, with independent installation evidence in the [release record](release-readiness.md). Generated framework integration, hosted LaunchDarkly account verification, and complete OpenFeature specification conformance remain outside this assessment.
 
 ## Acceptance gates
 
@@ -31,7 +31,7 @@ The local candidate passed 447 unit cases, all 13 executable programs, exact 208
 
 Independent [performance measurements](performance.md) show the representative structured case improving from 121.502 us and 222,424 bytes to 17.713 us and 7,680 bytes. The largest supported fixture improved from 42.723 ms and 71,387,544 bytes to 5.935 ms and 70,528 bytes. Scalar allocation counts are unchanged. These are measured configurations on one host, not deployment-wide SLOs.
 
-Source and independent-installation gates are closed. The current runtime commit is `3e7b49d5eec5`; both adapters at `b1e08a818877` require it. Examples and integration also pin hardened source, with development replacements preserved. Four fresh external consumers passed using Go 1.24.13, 1.25.5, 1.26.0, and 1.27.4, with GOWORK=off and no replacements. Each rejected the original regex expansion counterexample, delivered a complete 2048-key HTTP notification, and exercised the new snapshot, typed-object, and authoring-validation APIs, including adapter-only consumers selecting their declared minimum root. Exact versions are recorded in [verification](verification.md).
+Source and independent-installation gates are closed. The audited runtime API originated at `3e7b49d5eec5`, with adapter requirements advanced at `b1e08a818877`. The root release v0.1.0 points to `e1ccf5b5271a`; driver releases point to `cf17c7d0dad1` and require root v0.1.0. Examples and integration pin those versions, with development replacements preserved. Four fresh public versioned consumers passed using Go 1.24.13, 1.25.5, 1.26.0, and 1.27.4, with GOWORK=off and no replacements. Each rejected the original regex expansion counterexample, delivered a complete 2048-key HTTP notification, and exercised the new snapshot, typed-object, and authoring-validation APIs, including adapter-only consumers selecting their declared minimum root. Exact versions and checksums are recorded in [release verification](release-readiness.md).
 
 Renewed native review passed 31,680 independently composed decisions. Both adapter suites passed ten shuffled race-enabled repetitions. Two independent notification closure checks found no further actionable issue, including three shuffled repetitions of the full root race suite. The corrected root also passed its Go 1.24.13 minimum suite.
 

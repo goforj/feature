@@ -1,0 +1,18 @@
+{
+  "Mode": "forj dev",
+  "FeatureVersion": "v0.1.0",
+  "Renderer": "v0.37.0+dirty (d6ec515+dirty)",
+  "AppGoVersion": "1.27.4",
+  "PID": 4812,
+  "Checks": [
+    "app-owned Wire injection",
+    "rerender preserved application wiring",
+    "no module replacements",
+    "live file update with unchanged App PID",
+    "held request retained one revision across update",
+    "invalid JSON and deletion retained last valid decisions",
+    "source recovery cleared health without restarting",
+    "JSON changes did not trigger default dev watcher restarts",
+    "shutdown canceled and joined refresh worker"
+  ]
+}

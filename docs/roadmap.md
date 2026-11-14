@@ -2,7 +2,7 @@
 
 The standalone [production-readiness assessment](production-readiness.md) records the current library candidate gates separately from framework integration and publication.
 
-The standalone library is preparing its coordinated v0.1.0 public release. The broader generated GoForj component remains separate. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
+The standalone library has a coordinated [public v0.1.0 release](https://github.com/goforj/feature/releases/tag/v0.1.0). Review, real-App adoption, and public installation passed as recorded in the [release record](release-readiness.md). The broader generated GoForj component remains separate.
 
 The [provider study](provider-study.md) informed a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, SDK adapters, and cross-driver local integration suite are implemented. Hosted LaunchDarkly account verification remains pending and is distinct from the tested local SDK transports.
 
@@ -29,7 +29,7 @@ The [provider study](provider-study.md) informed a provider-neutral client with 
 - [x] Implement direct LaunchDarkly and OpenFeature drivers in optional modules, with explicit borrowed versus owned SDK lifecycles.
 - [x] Add a required shared driver conformance suite plus real SDK tests for updates, failures, context mapping, ownership, cancellation, and concurrent use. The [integration report](integration-results.json) records executed local service and SDK transport evidence.
 - [x] Verify OpenFeature hooks/context precedence and native LaunchDarkly behavior; keep unsupported capabilities explicit.
-- [x] Inventory all five modules, minimum Go requirements, dependency pins, independent tag shapes, and clean private Git consumers. Preserve the root's Go 1.24 minimum for native-only users. Published-version and public-distribution checks remain release gates.
+- [x] Inventory all five modules, minimum Go requirements, dependency pins, independent tag shapes, and clean consumers. Preserve the root's Go 1.24 minimum for native-only users. Independently tagged v0.1.0 modules passed public installation checks.
 
 ## Library review before freezing v1
 
@@ -71,10 +71,10 @@ This work belongs in `goforj`, with public guidance in `goforj-docs`.
 
 - [x] Resolve review and real-App findings and freeze the initial v0.1 API and document contract.
 - [x] Confirm public distribution. GitHub visibility is public, the maintainer selected a public release, and normal proxy/checksum source consumers passed.
-- [x] Verify independent native and SDK consumers plus their combined composition with `GOWORK=off`, normal public dependency checksums, and no local replacements under the current private Git access model. Repeat for the eventual release and public distribution model if selected.
+- [x] Verify independent native and SDK consumers plus their combined composition with `GOWORK=off`, normal public dependency checksums, and no local replacements. Repeated successfully against all actual public v0.1.0 module tags.
 - [x] Keep Codecov uploads optional and enforce exact runtime unit coverage independently in CI. This release does not change external coverage-account configuration.
-- [ ] Prepare release notes, select an initial version, and verify CI/Security for the final candidate.
-- [ ] Publish the authorized version and verify installation of the actual published module. Update the unreleased badge and installation guidance afterward.
+- [x] Prepare release notes, select v0.1.0, and verify CI/Security for each exact tagged candidate.
+- [x] Publish root and both driver modules, verify independent and combined public installation, and create the coordinated GitHub release. Installation guidance and the generated version badge use v0.1.0.
 
 ## Later, separately scoped
 

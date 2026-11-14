@@ -1,0 +1,74 @@
+[
+  {
+    "Consumer": "native",
+    "GoVersion": "go version go1.24.13 darwin/arm64",
+    "Modules": [
+      {
+        "Path": "github.com/goforj/feature",
+        "Version": "v0.1.0",
+        "Sum": "h1:Oh52Ts25EY5ybh21d1DdJ1Xiaxj2YLGjwtf5uMBLEpw=",
+        "GoModSum": "h1:HY8Npg5uenuKiQ2FaHLYrh5HHadXjMxu0ReUbuikI9E="
+      }
+    ]
+  },
+  {
+    "Consumer": "launchdarkly",
+    "GoVersion": "go version go1.25.5 darwin/arm64",
+    "Modules": [
+      {
+        "Path": "github.com/goforj/feature",
+        "Version": "v0.1.0",
+        "Sum": "h1:Oh52Ts25EY5ybh21d1DdJ1Xiaxj2YLGjwtf5uMBLEpw=",
+        "GoModSum": "h1:HY8Npg5uenuKiQ2FaHLYrh5HHadXjMxu0ReUbuikI9E="
+      },
+      {
+        "Path": "github.com/goforj/feature/driver/launchdarklyfeature",
+        "Version": "v0.1.0",
+        "Sum": "h1:g4EdwiRWFLkDlDK0dRtYEWTZ6ArESqx+5/rAVoXVpl8=",
+        "GoModSum": "h1:DmgiO949C7MJdnTbfZekw8leMSWr/3OAO71MBG/PHYk="
+      }
+    ]
+  },
+  {
+    "Consumer": "openfeature",
+    "GoVersion": "go version go1.26.0 darwin/arm64",
+    "Modules": [
+      {
+        "Path": "github.com/goforj/feature",
+        "Version": "v0.1.0",
+        "Sum": "h1:Oh52Ts25EY5ybh21d1DdJ1Xiaxj2YLGjwtf5uMBLEpw=",
+        "GoModSum": "h1:HY8Npg5uenuKiQ2FaHLYrh5HHadXjMxu0ReUbuikI9E="
+      },
+      {
+        "Path": "github.com/goforj/feature/driver/openfeaturefeature",
+        "Version": "v0.1.0",
+        "Sum": "h1:3usWJc+/0je1lDUMXmwt04FS+1w3306V0BMNbEKDD0Y=",
+        "GoModSum": "h1:Jvxn2kieiK5fsnv4nEoOoBCoeR20JnQCYqHBlZEHHvM="
+      }
+    ]
+  },
+  {
+    "Consumer": "combined",
+    "GoVersion": "go version go1.27.4 darwin/arm64",
+    "Modules": [
+      {
+        "Path": "github.com/goforj/feature",
+        "Version": "v0.1.0",
+        "Sum": "h1:Oh52Ts25EY5ybh21d1DdJ1Xiaxj2YLGjwtf5uMBLEpw=",
+        "GoModSum": "h1:HY8Npg5uenuKiQ2FaHLYrh5HHadXjMxu0ReUbuikI9E="
+      },
+      {
+        "Path": "github.com/goforj/feature/driver/launchdarklyfeature",
+        "Version": "v0.1.0",
+        "Sum": "h1:g4EdwiRWFLkDlDK0dRtYEWTZ6ArESqx+5/rAVoXVpl8=",
+        "GoModSum": "h1:DmgiO949C7MJdnTbfZekw8leMSWr/3OAO71MBG/PHYk="
+      },
+      {
+        "Path": "github.com/goforj/feature/driver/openfeaturefeature",
+        "Version": "v0.1.0",
+        "Sum": "h1:3usWJc+/0je1lDUMXmwt04FS+1w3306V0BMNbEKDD0Y=",
+        "GoModSum": "h1:Jvxn2kieiK5fsnv4nEoOoBCoeR20JnQCYqHBlZEHHvM="
+      }
+    ]
+  }
+]
