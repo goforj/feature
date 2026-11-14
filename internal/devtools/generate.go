@@ -323,11 +323,7 @@ func Generate(root string) error {
 	if err != nil {
 		return err
 	}
-	settings, err := Snippet(root, "settings", "settings")
-	if err != nil {
-		return err
-	}
-	readme := strings.NewReplacer("{{VERSION}}", releaseVersion, "{{QUICKSTART}}", construction+"\n\n"+values, "{{QUICKSTART_REFRESH}}", refresh, "{{SETTINGS}}", settings, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
+	readme := strings.NewReplacer("{{VERSION}}", releaseVersion, "{{QUICKSTART}}", construction+"\n\n"+values, "{{QUICKSTART_REFRESH}}", refresh, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
 	if strings.Contains(readme, "{{") {
 		return errors.New("unresolved template marker")
 	}
