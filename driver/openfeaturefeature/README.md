@@ -10,6 +10,12 @@ An empty Target.Key allows identity to be inherited from the SDK's configured AP
 
 This adapter supports boolean, string, integer, float, and structured evaluation. NewProvider exposes an injected native engine or other evaluator to ordinary OpenFeature SDK consumers, without owning its refresh or shutdown. See the [native provider program](../../examples/native-provider/main.go). Numeric interpretation remains provider-specific. It is not a complete implementation of the OpenFeature specification, a guarantee of every provider's capabilities, or a promise that every evaluation is local. Providers can perform network I/O. Request targeting scopes do not freeze provider configuration.
 
+Install the independently versioned module:
+
+```sh
+go get github.com/goforj/feature/driver/openfeaturefeature@v0.1.0
+```
+
 Run from the repository checkout:
 
 ```sh
@@ -18,6 +24,6 @@ go -C examples run ./openfeature
 INTEGRATION_RUN='TestDriverConformance/openfeature|TestRelay|TestOpenFeature' make test-integration
 ```
 
-Tests verify real SDK hooks, context merging, updates, lifecycle, and independent bindings alongside controlled error boundaries. Service-backed provider tests belong in the integration module. Hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.
+Tests verify real SDK hooks, context merging, updates, lifecycle, and independent bindings alongside controlled error boundaries. Service-backed provider tests belong in the integration module. Hosted-account verification remains separate. Its relative root replacement intentionally exercises sibling source during repository development; external consumers select the declared root requirement.
 
 NewProvider forwards native revision changes and stale/ready transitions through the SDK event channel. It also forwards custom tracking to an explicitly configured native event sink. SupportsTracking reports known support; an owned adapter returns ErrUnsupported for a provider known to lack tracking. Borrowed clients can only establish SDK submission capability. OpenFeature Track has no error result, so observe native sink failures through WithObserver when needed. The [capability matrix](../../docs/capabilities.md) records pinned provider limitations, including custom tracking and numeric metrics.

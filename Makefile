@@ -37,3 +37,14 @@ check-generated:
 
 test-tools:
 	go test ./internal/devtools ./tools/maintain
+
+.PHONY: release-plan verify-release
+release-plan:
+	bash scripts/release-plan.sh "$(VERSION)"
+
+verify-release:
+	go run ./tools/consumercheck -version "$(VERSION)"
+
+.PHONY: smoke-app
+smoke-app:
+	go run ./tools/appsmoke -version "$(VERSION)" $(SMOKE_ARGS)

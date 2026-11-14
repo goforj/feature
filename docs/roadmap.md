@@ -2,7 +2,7 @@
 
 The standalone [production-readiness assessment](production-readiness.md) records the current library candidate gates separately from framework integration and publication.
 
-The standalone first implementation is built and pushed. The broader GoForj feature is still in progress. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
+The standalone library is preparing its coordinated v0.1.0 public release. The broader generated GoForj component remains separate. Green tests establish the implemented contract; they do not complete the review, adoption, integration, or release work below.
 
 The [provider study](provider-study.md) informed a provider-neutral client with native, direct LaunchDarkly, and OpenFeature drivers. The native engine, portable facade, SDK adapters, and cross-driver local integration suite are implemented. Hosted LaunchDarkly account verification remains pending and is distinct from the tested local SDK transports.
 
@@ -46,13 +46,13 @@ The latest [multi-pass review](review.md) records reproduced findings and their 
 
 ## Real-App adoption
 
-- [ ] Inject the client into a real GoForj App service and use a meaningful feature decision.
-- [ ] Demonstrate a file-backed decision changing while the App PID remains unchanged.
-- [ ] Demonstrate several related decisions using one captured view during an update.
-- [ ] Exercise invalid input, file deletion, recovery, and refresh-loop shutdown in the running App.
-- [ ] Check the developer workflow, including whether `forj dev` rebuilds or restarts when the selected flag document changes.
+- [x] Inject the client into a real GoForj App service and use a meaningful feature decision.
+- [x] Demonstrate a file-backed decision changing while the App PID remains unchanged.
+- [x] Demonstrate several related decisions using one captured view during an update.
+- [x] Exercise invalid input, file deletion, recovery, and refresh-loop shutdown in the running App.
+- [x] Check the developer workflow, including whether `forj dev` rebuilds or restarts when the selected flag document changes.
 
-Completion means a reproducible App example proves the behavior and identifies any API or lifecycle changes needed before framework integration.
+The [reproducible App smoke](app-smoke.md) passed direct and native development lifecycles, including unchanged process IDs, captured-request consistency, invalid/deleted file retention, recovery, rerender preservation, and worker shutdown. It uses app-owned wiring and does not add a generated Feature component.
 
 ## GoForj integration
 
@@ -69,10 +69,10 @@ This work belongs in `goforj`, with public guidance in `goforj-docs`.
 
 ## Release and distribution
 
-- [ ] Resolve review and real-App findings, then freeze the initial public API and document contract.
-- [ ] Confirm the intended distribution and access model. The repository is currently private; do not assume public-proxy availability.
+- [x] Resolve review and real-App findings and freeze the initial v0.1 API and document contract.
+- [x] Confirm public distribution. GitHub visibility is public, the maintainer selected a public release, and normal proxy/checksum source consumers passed.
 - [x] Verify independent native and SDK consumers plus their combined composition with `GOWORK=off`, normal public dependency checksums, and no local replacements under the current private Git access model. Repeat for the eventual release and public distribution model if selected.
-- [ ] Decide whether to enable Codecov, then configure and verify its uploads and checks if selected. Local exact coverage enforcement already exists.
+- [x] Keep Codecov uploads optional and enforce exact runtime unit coverage independently in CI. This release does not change external coverage-account configuration.
 - [ ] Prepare release notes, select an initial version, and verify CI/Security for the final candidate.
 - [ ] Publish the authorized version and verify installation of the actual published module. Update the unreleased badge and installation guidance afterward.
 

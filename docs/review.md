@@ -163,7 +163,7 @@ The candidate passed 418 unit cases, 12 programs, and 1966/1966 runtime statemen
 
 Corrected contract text that still described implemented SDK adapters as future work. Canonical programs remain the only executable example source, documentation generation runs twice for parity, and the native root still has no vendor dependencies. Native, LaunchDarkly, and OpenFeature minimums remain Go 1.24, 1.25, and 1.26 respectively.
 
-There are no release tags or release scripts yet. The published-module inventory is root plus the two drivers; examples and integration are tooling modules. Future tags must independently publish each runtime module:
+At the original prepublication review there were no release tags or scripts. The current planner and publication state are recorded in [release readiness](release-readiness.md). The runtime-module inventory remains root plus the two drivers; examples and integration are tooling modules. Tags independently publish each runtime module:
 
 | Module | Tag shape |
 | :--- | :--- |
@@ -171,7 +171,7 @@ There are no release tags or release scripts yet. The published-module inventory
 | github.com/goforj/feature/driver/launchdarklyfeature | driver/launchdarklyfeature/vX.Y.Z |
 | github.com/goforj/feature/driver/openfeaturefeature | driver/openfeaturefeature/vX.Y.Z |
 
-A root tag does not publish either driver. Before a versioned release, select intended root requirements for each driver, preserve development replacements, and repeat independent and combined consumer tests with GOWORK=off and no replacements against actual published versions. Fresh private Git consumers passed against the reviewed runtime commit, including a real OpenFeature provider shutdown-error regression also retained in the unit suite. Exact versions and toolchains are recorded in [verification](verification.md). Public distribution, hosted LaunchDarkly account checks, Codecov configuration, and real GoForj App adoption remain separate pending work.
+A root tag does not publish either driver. Before a versioned release, select intended root requirements for each driver, preserve development replacements, and repeat independent and combined consumer tests with GOWORK=off and no replacements against actual published versions. Fresh private Git consumers passed against the reviewed runtime commit, including a real OpenFeature provider shutdown-error regression also retained in the unit suite. Exact versions and toolchains are recorded in [verification](verification.md). Those original pending gates are tracked in the current [roadmap](roadmap.md) and [release record](release-readiness.md); subsequent public-source and real-App checks are recorded there.
 
 ## Renewed production boundary review
 

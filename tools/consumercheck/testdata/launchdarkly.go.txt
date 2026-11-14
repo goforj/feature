@@ -1,0 +1,74 @@
+// Command consumer checks independent module installation.
+package main
+import(
+"errors"
+"context"
+"fmt"
+"strings"
+"net/http"
+"net/http/httptest"
+"github.com/goforj/feature"
+"github.com/goforj/feature/driver/launchdarklyfeature"
+"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+"github.com/launchdarkly/go-server-sdk/v7"
+"github.com/launchdarkly/go-server-sdk/v7/ldcomponents"
+"github.com/launchdarkly/go-server-sdk/v7/testhelpers/ldtestdata"
+)
+// check fails the consumer when a contract is violated.
+func check(ok bool,message string){if !ok{panic(message)}}
+
+// launchDarklyCheck uses the official SDK engine without a hosted account.
+func launchDarklyCheck() {
+ ctx:=context.Background();data:=ldtestdata.DataSource()
+ data.Update(data.Flag("string").Variations(ldvalue.String("green")).VariationForAllIndex(0))
+ data.Update(data.Flag("int").Variations(ldvalue.Int(12)).VariationForAllIndex(0))
+ data.Update(data.Flag("float").Variations(ldvalue.Float64(1.25)).VariationForAllIndex(0))
+ data.Update(data.Flag("object").Variations(ldvalue.CopyArbitraryValue(map[string]any{"color":"blue"})).VariationForAllIndex(0))
+ driver,err:=launchdarklyfeature.Open(ctx,launchdarklyfeature.Config{SDKKey:"consumer-test",SDKConfig:ldclient.Config{DataSource:data,Events:ldcomponents.NoEvents(),Logging:ldcomponents.NoLogging()}});check(err==nil,"LaunchDarkly open");defer driver.Close()
+ flags:=feature.New(driver).For(feature.Target{Key:"tenant"})
+ check(flags.String(ctx,"string","f").Value=="green","LaunchDarkly string")
+ check(flags.Int(ctx,"int",0).Value==12,"LaunchDarkly integer")
+ check(flags.Float(ctx,"float",0).Value==1.25,"LaunchDarkly float")
+ check(flags.Object(ctx,"object",map[string]any{}).Value.(map[string]any)["color"]=="blue","LaunchDarkly object")
+ check(flags.Track(ctx,"purchase",feature.Event{})==nil,"LaunchDarkly SDK submission")
+}
+
+// hardenedRootCheck proves even adapter-only consumers select the protected native engine.
+func hardenedRootCheck() {
+ pattern:="(?:"+strings.Repeat("a?",500)+"){1000}"
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{"test":{Default:false,Rules:[]feature.Rule{{Conditions:[]feature.Condition{{Attribute:"value",Operator:feature.OpMatches,Value:pattern}},Value:true}}}}}
+ _,err:=feature.NewMemorySource(doc)
+ check(err==feature.ErrInvalidDocument,"native regex expansion protection")
+ check(feature.MaxPatternInstructions==4096,"native compiled pattern limit")
+}
+
+// inventoryWebhookCheck verifies the corrected root also reaches independently installed adapters.
+func inventoryWebhookCheck() {
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.WriteHeader(http.StatusNoContent)}));defer server.Close()
+ exporter,err:=feature.NewHTTPExporter(feature.ExporterConfig{HTTP:feature.HTTPConfig{URL:server.URL}});check(err==nil,"webhook constructor")
+ keys:=make([]string,2*feature.MaxFlags);for i:=range keys{keys[i]=fmt.Sprintf("flag-%04d",i)}
+ check(exporter.Notify(context.Background(),feature.Change{Keys:keys})==nil,"complete inventory webhook")
+ check(exporter.Notify(context.Background(),feature.Change{Keys:append(keys,"overflow")})==feature.ErrInvalidValue,"webhook union bound")
+}
+
+// simplicityCheck exercises the new application API through independently selected source.
+func simplicityCheck() {
+ ctx:=context.Background();observed,tracked:=0,0
+ doc:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"layout":{Default:map[string]any{"columns":3}}}}
+ source,err:=feature.NewMemorySource(doc);check(err==nil,"simplicity source")
+ engine,err:=feature.Open(ctx,source);check(err==nil,"simplicity engine")
+ flags:=feature.New(engine,feature.WithObserver(feature.ObserverFunc(func(context.Context,feature.Observation){observed++})),feature.WithTracker(feature.TrackerFunc(func(context.Context,string,feature.Target,feature.Event)error{tracked++;return nil})))
+ snapshot,err:=flags.Snapshot();check(err==nil,"facade capture")
+ type layout struct{Columns int}
+ request:=snapshot.For(feature.Target{Key:"tenant"})
+ result:=feature.ObjectAs(ctx,request,"layout",layout{Columns:1});check(result.Err==nil && result.Value.Columns==3 && result.Revision==engine.Status().Revision,"typed object and revision")
+ doc.Flags["layout"]=feature.Flag{Default:map[string]any{"columns":4}};check(source.Replace(doc)==nil && engine.Refresh(ctx)==nil,"simplicity refresh")
+ check(feature.ObjectAs(ctx,flags,"layout",layout{Columns:1}).Value.Columns==4 && feature.ObjectAs(ctx,request,"layout",layout{Columns:1}).Value.Columns==3,"live and frozen typed object")
+ check(observed==3,"snapshot observer preservation")
+ check(request.Track(ctx,"event",feature.Event{})==nil && tracked==1,"snapshot tracker preservation")
+ bad:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"private":{DefaultVariant:"missing"}}};err=feature.Validate(bad);var issue *feature.ValidationError
+ check(errors.As(err,&issue) && errors.Is(err,feature.ErrInvalidDocument) && issue.Path=="/flags/private/default_variant" && err.Error()==feature.ErrInvalidDocument.Error(),"safe authoring diagnostics")
+}
+
+// main exercises the installed modules.
+func main(){launchDarklyCheck();hardenedRootCheck();inventoryWebhookCheck();simplicityCheck();fmt.Println("launchdarkly passed")}

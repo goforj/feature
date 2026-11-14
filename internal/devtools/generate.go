@@ -92,12 +92,22 @@ func Fingerprint(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, pattern := range []string{"internal/devtools/*.go", "tools/maintain/*.go"} {
-		tooling, err := filepath.Glob(filepath.Join(root, pattern))
+	for _, directory := range []string{"internal/devtools", "tools"} {
+		err := filepath.WalkDir(filepath.Join(root, directory), func(path string, entry fs.DirEntry, err error) error {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if !entry.IsDir() && (strings.HasSuffix(path, ".go") || strings.HasSuffix(path, ".go.txt")) {
+				paths = append(paths, path)
+			}
+			return nil
+		})
 		if err != nil {
 			return "", err
 		}
-		paths = append(paths, tooling...)
 	}
 	err = filepath.WalkDir(filepath.Join(root, "driver"), func(path string, entry fs.DirEntry, err error) error {
 		if os.IsNotExist(err) {
@@ -313,7 +323,7 @@ func Generate(root string) error {
 	if err != nil {
 		return err
 	}
-	readme := strings.NewReplacer("{{QUICKSTART}}", construction+"\n\n"+values, "{{QUICKSTART_REFRESH}}", refresh, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
+	readme := strings.NewReplacer("{{VERSION}}", releaseVersion, "{{QUICKSTART}}", construction+"\n\n"+values, "{{QUICKSTART_REFRESH}}", refresh, "{{INDEX}}", strings.TrimSuffix(table.String(), "\n"), "{{EXAMPLES}}", strings.Join(examples, "\n\n")).Replace(string(template))
 	if strings.Contains(readme, "{{") {
 		return errors.New("unresolved template marker")
 	}
@@ -326,7 +336,7 @@ func Generate(root string) error {
 	badges := []struct{ name, label, value, color string }{
 		{"unit", "unit tests", fmt.Sprint(evidence.PassedTests), "#4c1"},
 		{"coverage", "library coverage", "100%", "#4c1"},
-		{"status", "release", "unreleased", "#777"},
+		{"status", "release", releaseVersion, "#007ec6"},
 		{"ci", "CI", "prepared", "#777"},
 		{"security", "Security", "prepared", "#777"},
 		{"license", "license", "MIT", "#007ec6"},

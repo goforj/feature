@@ -57,7 +57,7 @@ These checks apply to the earlier boolean candidate. Independent consumers insta
 | OpenFeature only | Go 1.26.0 | Adapter's declared `331a16e2f707` requirement |
 | Native and both drivers | Go 1.27.4 | Candidate commit |
 
-The adapter-only checks did not force-upgrade the root, so they also validate each adapter's declared minimum root requirement. Selected module metadata contained no replacements. Public dependencies used normal checksum verification. The first-party repository is private: installation used Git authentication and `GOPRIVATE=github.com/goforj/feature`. This does not establish public-proxy availability or a versioned release.
+The adapter-only checks did not force-upgrade the root, so they also validate each adapter's declared minimum root requirement. Selected module metadata contained no replacements. Public dependencies used normal checksum verification. At that historical check, the first-party repository was private: installation used Git authentication and `GOPRIVATE=github.com/goforj/feature`. This does not establish public-proxy availability or a versioned release.
 
 ## Review findings
 

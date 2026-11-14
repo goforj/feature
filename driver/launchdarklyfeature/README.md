@@ -12,6 +12,12 @@ Successful off-variations are preserved, including true values. Resolve returns 
 
 String, Int, Float, and Object provide typed decisions through the same scoped client. Integer evaluation rejects fractions and values outside the exact IEEE-754 integer range of minus (2^53-1) through 2^53-1. Object and array results are owned copies with portable value bounds.
 
+Install the independently versioned module:
+
+```sh
+go get github.com/goforj/feature/driver/launchdarklyfeature@v0.1.0
+```
+
 Run from the repository checkout:
 
 ```sh
@@ -20,6 +26,6 @@ go -C examples run ./launchdarkly
 INTEGRATION_RUN='TestDriverConformance/launchdarkly|TestLaunchDarkly' make test-integration
 ```
 
-Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Required integration tests additionally run through the official LaunchDarkly Relay Docker image, checking targeting, updates, authentication, analytics forwarding, and container outage recovery. Its upstream data plane is a local fixture, so hosted-account verification remains separate. This module is unreleased; its relative root replacement intentionally exercises sibling source during repository development.
+Unit tests exercise the actual SDK's official local data source as well as controlled failure boundaries. Required integration tests additionally run through the official LaunchDarkly Relay Docker image, checking targeting, updates, authentication, analytics forwarding, and container outage recovery. Its upstream data plane is a local fixture, so hosted-account verification remains separate. Its relative root replacement intentionally exercises sibling source during repository development; external consumers select the declared root requirement.
 
 Track submits custom data or numeric metrics through the official SDK, retaining its hooks, privacy, batching, and delivery policy. SupportsTracking describes SDK submission capability, not delivery confirmation. Integration tests inspect custom events and metrics after they cross the real Relay container.

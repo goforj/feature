@@ -4,11 +4,11 @@
 </p>
 <p align="center">Typed feature flags for Go, with targeted rollouts, live updates, and consistent request snapshots.</p>
 <p align="center">
-  <a href="https://github.com/goforj/feature/actions/workflows/ci.yml"><img src="docs/assets/ci.svg" alt="CI workflow prepared"></a>
-  <a href="https://github.com/goforj/feature/actions/workflows/security.yml"><img src="docs/assets/security.svg" alt="Security workflow prepared"></a>
+  <a href="https://github.com/goforj/feature/actions/workflows/ci.yml"><img src="https://github.com/goforj/feature/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/goforj/feature/actions/workflows/security.yml"><img src="https://github.com/goforj/feature/actions/workflows/security.yml/badge.svg?branch=main" alt="Security"></a>
   <a href="LICENSE"><img src="docs/assets/license.svg" alt="MIT license"></a>
   <a href="https://go.dev"><img src="docs/assets/go.svg" alt="Go 1.24 or newer"></a>
-  <img src="docs/assets/status.svg" alt="Unreleased">
+  <img src="docs/assets/status.svg" alt="Release v0.1.0">
   <img src="docs/assets/unit.svg" alt="Executed unit tests">
   <img src="docs/assets/coverage.svg" alt="Library unit statement coverage">
 </p>
@@ -108,7 +108,20 @@ Application services use `Features` and `Scope`. Keep the native engine at start
 
 Use a file or HTTP source with the same engine to load external definitions. Refresh explicitly or run a caller-owned polling loop. The [refresh](examples/refresh/main.go) and [polling](examples/polling/main.go) examples show both workflows.
 
-The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. This library is unreleased. Clone and run the complete example:
+The root package requires Go 1.24 or newer and has no external runtime dependencies. The complete example catalog includes optional SDK drivers and uses Go 1.26 or newer. Install the root module:
+
+```sh
+go get github.com/goforj/feature@v0.1.0
+```
+
+Optional SDK modules are independently versioned:
+
+```sh
+go get github.com/goforj/feature/driver/launchdarklyfeature@v0.1.0
+go get github.com/goforj/feature/driver/openfeaturefeature@v0.1.0
+```
+
+Clone and run the complete example:
 
 ```sh
 git clone https://github.com/goforj/feature.git

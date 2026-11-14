@@ -1,0 +1,75 @@
+// Command consumer checks independent module installation.
+package main
+import(
+"errors"
+"context"
+"fmt"
+"strings"
+"net/http"
+"net/http/httptest"
+"github.com/goforj/feature"
+"github.com/goforj/feature/driver/openfeaturefeature"
+"github.com/open-feature/go-sdk/openfeature"
+"github.com/open-feature/go-sdk/openfeature/isolated"
+)
+// check fails the consumer when a contract is violated.
+func check(ok bool,message string){if !ok{panic(message)}}
+
+// openFeatureCheck uses an ordinary SDK binding over the native provider.
+func openFeatureCheck() {
+ ctx:=context.Background();source,err:=feature.NewMemorySource(feature.Document{Schema:2,Flags:map[string]feature.Flag{"theme":{Default:"green"},"count":{Default:int64(9007199254740993)}}});check(err==nil,"provider source")
+ calls:=0
+ engine,err:=feature.Open(ctx,source,feature.WithEventSink(feature.TrackerFunc(func(context.Context,string,feature.Target,feature.Event)error{calls++;return nil})));check(err==nil,"provider engine")
+ api:=isolated.NewAPI();defer api.Shutdown(ctx)
+ provider:=openfeaturefeature.NewProvider(engine)
+ check(api.SetProviderAndWait(ctx,provider)==nil,"provider binding")
+ sdk:=api.NewClient();evaluation:=openfeature.NewEvaluationContext("tenant",nil)
+ value,err:=sdk.StringValue(ctx,"theme","f",evaluation);check(err==nil && value=="green","standard SDK string")
+ count,err:=sdk.IntValue(ctx,"count",0,evaluation);check(err==nil && count==9007199254740993,"standard SDK integer")
+ sdk.Track(ctx,"purchase",evaluation,openfeature.NewTrackingEventDetails(12.5))
+ check(calls==1,"standard SDK native tracking")
+ wrapper:=openfeaturefeature.New(sdk);flags:=feature.New(wrapper)
+ check(flags.Int(ctx,"count",0).Value==9007199254740993,"OpenFeature driver typed round trip")
+ check(wrapper.Close()==nil,"borrowed adapter close")
+ check(feature.New(engine).String(ctx,"theme","f").Value=="green","borrowed native lifecycle")
+}
+
+// hardenedRootCheck proves even adapter-only consumers select the protected native engine.
+func hardenedRootCheck() {
+ pattern:="(?:"+strings.Repeat("a?",500)+"){1000}"
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{"test":{Default:false,Rules:[]feature.Rule{{Conditions:[]feature.Condition{{Attribute:"value",Operator:feature.OpMatches,Value:pattern}},Value:true}}}}}
+ _,err:=feature.NewMemorySource(doc)
+ check(err==feature.ErrInvalidDocument,"native regex expansion protection")
+ check(feature.MaxPatternInstructions==4096,"native compiled pattern limit")
+}
+
+// inventoryWebhookCheck verifies the corrected root also reaches independently installed adapters.
+func inventoryWebhookCheck() {
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.WriteHeader(http.StatusNoContent)}));defer server.Close()
+ exporter,err:=feature.NewHTTPExporter(feature.ExporterConfig{HTTP:feature.HTTPConfig{URL:server.URL}});check(err==nil,"webhook constructor")
+ keys:=make([]string,2*feature.MaxFlags);for i:=range keys{keys[i]=fmt.Sprintf("flag-%04d",i)}
+ check(exporter.Notify(context.Background(),feature.Change{Keys:keys})==nil,"complete inventory webhook")
+ check(exporter.Notify(context.Background(),feature.Change{Keys:append(keys,"overflow")})==feature.ErrInvalidValue,"webhook union bound")
+}
+
+// simplicityCheck exercises the new application API through independently selected source.
+func simplicityCheck() {
+ ctx:=context.Background();observed,tracked:=0,0
+ doc:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"layout":{Default:map[string]any{"columns":3}}}}
+ source,err:=feature.NewMemorySource(doc);check(err==nil,"simplicity source")
+ engine,err:=feature.Open(ctx,source);check(err==nil,"simplicity engine")
+ flags:=feature.New(engine,feature.WithObserver(feature.ObserverFunc(func(context.Context,feature.Observation){observed++})),feature.WithTracker(feature.TrackerFunc(func(context.Context,string,feature.Target,feature.Event)error{tracked++;return nil})))
+ snapshot,err:=flags.Snapshot();check(err==nil,"facade capture")
+ type layout struct{Columns int}
+ request:=snapshot.For(feature.Target{Key:"tenant"})
+ result:=feature.ObjectAs(ctx,request,"layout",layout{Columns:1});check(result.Err==nil && result.Value.Columns==3 && result.Revision==engine.Status().Revision,"typed object and revision")
+ doc.Flags["layout"]=feature.Flag{Default:map[string]any{"columns":4}};check(source.Replace(doc)==nil && engine.Refresh(ctx)==nil,"simplicity refresh")
+ check(feature.ObjectAs(ctx,flags,"layout",layout{Columns:1}).Value.Columns==4 && feature.ObjectAs(ctx,request,"layout",layout{Columns:1}).Value.Columns==3,"live and frozen typed object")
+ check(observed==3,"snapshot observer preservation")
+ check(request.Track(ctx,"event",feature.Event{})==nil && tracked==1,"snapshot tracker preservation")
+ bad:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"private":{DefaultVariant:"missing"}}};err=feature.Validate(bad);var issue *feature.ValidationError
+ check(errors.As(err,&issue) && errors.Is(err,feature.ErrInvalidDocument) && issue.Path=="/flags/private/default_variant" && err.Error()==feature.ErrInvalidDocument.Error(),"safe authoring diagnostics")
+}
+
+// main exercises the installed modules.
+func main(){openFeatureCheck();hardenedRootCheck();inventoryWebhookCheck();simplicityCheck();fmt.Println("openfeature passed")}

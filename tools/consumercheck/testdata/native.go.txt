@@ -1,0 +1,81 @@
+// Command consumer checks independent module installation.
+package main
+import(
+"errors"
+"context"
+"fmt"
+"strings"
+"net/http"
+"net/http/httptest"
+"github.com/goforj/feature"
+"time"
+)
+// check fails the consumer when a contract is violated.
+func check(ok bool,message string){if !ok{panic(message)}}
+
+// nativeCheck exercises typed models and immutable views against actual Git-installed source.
+func nativeCheck() {
+ ctx:=context.Background();start:=time.Date(2026,1,1,0,0,0,0,time.UTC);end:=start.Add(time.Hour);now:=start
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{
+  "theme":{Variants:map[string]any{"control":"blue","treatment":"green"},DefaultVariant:"control",Rules:[]feature.Rule{{Conditions:[]feature.Condition{{Attribute:"paid",Operator:feature.OpEqual,Value:true}},Variant:"treatment"}}},
+  "count":{Default:int64(9007199254740993)},"ratio":{Default:1.0},"object":{Default:map[string]any{"columns":2}},
+  "launch":{Default:false,Rules:[]feature.Rule{{Start:&start,End:&end,Value:true}}},
+ }}
+ encoded,err:=feature.Encode(doc);check(err==nil,"native encode")
+ decoded,err:=feature.Decode(encoded);check(err==nil,"native decode")
+ source,err:=feature.NewMemorySource(decoded);check(err==nil,"native source")
+ calls:=0
+ engine,err:=feature.Open(ctx,source,feature.WithClock(func()time.Time{return now}),feature.WithEventSink(feature.TrackerFunc(func(context.Context,string,feature.Target,feature.Event)error{calls++;return nil})));check(err==nil,"native open")
+ target:=feature.Target{Key:"tenant",Attributes:map[string]any{"paid":true}}
+ flags:=feature.New(engine).For(target);view:=feature.New(engine.Snapshot()).For(target)
+ check(flags.String(ctx,"theme","fallback").Value=="green","native typed targeting")
+ check(flags.Int(ctx,"count",0).Value==9007199254740993,"native integer precision")
+ check(flags.Float(ctx,"ratio",0).Value==1.0,"native float type")
+ check(flags.Object(ctx,"object",map[string]any{}).Value.(map[string]any)["columns"]==int64(2),"native object")
+ now=end;check(!flags.Enabled(ctx,"launch") && view.Enabled(ctx,"launch"),"snapshot evaluation time")
+ check(flags.Track(ctx,"purchase",feature.Event{})==nil && calls==1,"native tracking")
+ loaded,err:=source.Load(ctx);check(err==nil,"native owned source")
+ flag:=loaded.Flags["theme"];flag.Rules[0].Variant="control";loaded.Flags["theme"]=flag
+ check(source.Replace(loaded)==nil && engine.Refresh(ctx)==nil,"edit loaded variant")
+ check(flags.String(ctx,"theme","f").Value=="blue" && view.String(ctx,"theme","f").Value=="green","snapshot definitions")
+}
+
+// hardenedRootCheck proves even adapter-only consumers select the protected native engine.
+func hardenedRootCheck() {
+ pattern:="(?:"+strings.Repeat("a?",500)+"){1000}"
+ doc:=feature.Document{Schema:2,Flags:map[string]feature.Flag{"test":{Default:false,Rules:[]feature.Rule{{Conditions:[]feature.Condition{{Attribute:"value",Operator:feature.OpMatches,Value:pattern}},Value:true}}}}}
+ _,err:=feature.NewMemorySource(doc)
+ check(err==feature.ErrInvalidDocument,"native regex expansion protection")
+ check(feature.MaxPatternInstructions==4096,"native compiled pattern limit")
+}
+
+// inventoryWebhookCheck verifies the corrected root also reaches independently installed adapters.
+func inventoryWebhookCheck() {
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.WriteHeader(http.StatusNoContent)}));defer server.Close()
+ exporter,err:=feature.NewHTTPExporter(feature.ExporterConfig{HTTP:feature.HTTPConfig{URL:server.URL}});check(err==nil,"webhook constructor")
+ keys:=make([]string,2*feature.MaxFlags);for i:=range keys{keys[i]=fmt.Sprintf("flag-%04d",i)}
+ check(exporter.Notify(context.Background(),feature.Change{Keys:keys})==nil,"complete inventory webhook")
+ check(exporter.Notify(context.Background(),feature.Change{Keys:append(keys,"overflow")})==feature.ErrInvalidValue,"webhook union bound")
+}
+
+// simplicityCheck exercises the new application API through independently selected source.
+func simplicityCheck() {
+ ctx:=context.Background();observed,tracked:=0,0
+ doc:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"layout":{Default:map[string]any{"columns":3}}}}
+ source,err:=feature.NewMemorySource(doc);check(err==nil,"simplicity source")
+ engine,err:=feature.Open(ctx,source);check(err==nil,"simplicity engine")
+ flags:=feature.New(engine,feature.WithObserver(feature.ObserverFunc(func(context.Context,feature.Observation){observed++})),feature.WithTracker(feature.TrackerFunc(func(context.Context,string,feature.Target,feature.Event)error{tracked++;return nil})))
+ snapshot,err:=flags.Snapshot();check(err==nil,"facade capture")
+ type layout struct{Columns int}
+ request:=snapshot.For(feature.Target{Key:"tenant"})
+ result:=feature.ObjectAs(ctx,request,"layout",layout{Columns:1});check(result.Err==nil && result.Value.Columns==3 && result.Revision==engine.Status().Revision,"typed object and revision")
+ doc.Flags["layout"]=feature.Flag{Default:map[string]any{"columns":4}};check(source.Replace(doc)==nil && engine.Refresh(ctx)==nil,"simplicity refresh")
+ check(feature.ObjectAs(ctx,flags,"layout",layout{Columns:1}).Value.Columns==4 && feature.ObjectAs(ctx,request,"layout",layout{Columns:1}).Value.Columns==3,"live and frozen typed object")
+ check(observed==3,"snapshot observer preservation")
+ check(request.Track(ctx,"event",feature.Event{})==nil && tracked==1,"snapshot tracker preservation")
+ bad:=feature.Document{Schema:feature.TypedSchemaVersion,Flags:map[string]feature.Flag{"private":{DefaultVariant:"missing"}}};err=feature.Validate(bad);var issue *feature.ValidationError
+ check(errors.As(err,&issue) && errors.Is(err,feature.ErrInvalidDocument) && issue.Path=="/flags/private/default_variant" && err.Error()==feature.ErrInvalidDocument.Error(),"safe authoring diagnostics")
+}
+
+// main exercises the installed modules.
+func main(){nativeCheck();hardenedRootCheck();inventoryWebhookCheck();simplicityCheck();fmt.Println("native passed")}

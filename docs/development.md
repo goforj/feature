@@ -8,7 +8,7 @@ The initial workflow is a local typed decision with exact targeting, stable perc
 
 The native evaluator has no external runtime dependencies. The [provider study](provider-study.md) informed the portable facade and optional direct LaunchDarkly and OpenFeature drivers. The adapters enforce exact full runtime unit coverage and have a separate required service integration suite. No claim of hosted-provider interchangeability or OpenFeature specification conformance is made. See the [verification record](verification.md) for executed checks and remaining boundaries.
 
-The implementation follows the GoForj feature-flags proposal, with Open replacing the proposed I/O-performing New constructor. Source constructors remain explicit and do not perform filesystem I/O. Framework integration, write APIs, release publication, and hosted account setup remain separate. SDK drivers and container-backed integration are in scope for the current library build.
+The implementation follows the GoForj feature-flags proposal, with Open replacing the proposed I/O-performing New constructor. Source constructors remain explicit and do not perform filesystem I/O. Generated framework integration, write APIs, and hosted account setup remain separate. SDK drivers and container-backed integration are in scope for the current library build.
 
 ## Commands
 
@@ -39,6 +39,17 @@ Keep source-owned comments and expected output immediately adjacent to calls. On
 
 The standalone [production-readiness assessment](production-readiness.md) tracks closure reviews, measured resource bounds, stress evidence, and remaining external gates. Native evaluation measurements and their reproducible harness are recorded in [performance](performance.md).
 
-The repository is unreleased. Local validation does not establish public installation, remote CI, Codecov uploads, or GitHub App access. The local task prepares workflows and a strict Codecov policy; it does not configure external accounts, repository secrets, webhooks, or releases.
+The repository is public. The coordinated v0.1.0 release uses three independently published runtime modules. Root and driver tags, selected commits, public checksums, and application evidence are recorded in [release readiness](release-readiness.md). Development replacements remain intentional and are rejected in external consumer verification.
 
-Before publishing, observe CI for the exact candidate, verify independent root and nested-module consumers with GOWORK=off and no replacements, and confirm external coverage setup if enabled. Private Git consumers have passed as recorded in verification.md. Public-proxy installation still requires the intended distribution model and separately published module tags. Until then the README's clone-and-run path is the intended entry point. No release tag or pseudo-version is invented.
+Release maintenance:
+
+```sh
+make release-plan VERSION=v0.1.0
+make verify-release VERSION=v0.1.0
+make smoke-app VERSION=v0.1.0
+make smoke-app VERSION=v0.1.0 SMOKE_ARGS=-dev
+```
+
+The planner does not create tags. Verify the root through the normal public Go proxy before publishing driver tags that require it. The public-consumer tool uses fresh module caches, normal checksum verification, GOWORK=off, and no replacements. It exercises each adapter's declared root requirement independently, plus the combined graph, on the supported Go lines. The [App smoke](app-smoke.md) requires a GoForj CLI and renders only under /tmp.
+
+Patch releases preserve public signatures, persisted native document contracts, and rollout assignments. Before v1, a minor release may evolve APIs with documented migration guidance. Hosted-account verification and generated framework integration remain distinct from the released standalone library. Codecov uploads remain optional; exact unit statement coverage is required locally and in CI.

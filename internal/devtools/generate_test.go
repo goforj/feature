@@ -98,6 +98,9 @@ func TestGenerateNavigation(t *testing.T) {
 	if strings.Contains(readme, "{{") {
 		t.Fatal("unresolved marker")
 	}
+	if !strings.Contains(readme, "go get github.com/goforj/feature@"+releaseVersion) || !strings.Contains(readme, `alt="Release `+releaseVersion+`"`) {
+		t.Fatal("release version differs between badge and installation guidance")
+	}
 	quickstart := strings.SplitN(strings.SplitN(readme, "## Quick start\n", 2)[1], "\n## Available sources", 2)[0]
 	for _, text := range []string{"flags.Enabled(", "flags.String(", "flags.Int(", "flags.Float(", "feature.ObjectAs(", "features.Snapshot()", "source.Replace(document)", "engine.Refresh(ctx)", "// Theme: midnight\n\n", "// Live theme: sunrise\n\n", "// Captured request theme: midnight"} {
 		if !strings.Contains(quickstart, text) {
@@ -253,5 +256,23 @@ func TestMergeCoverage(t *testing.T) {
 	}
 	if _, _, _, err := MergeCoverage([]byte("mode: set\n")); err == nil {
 		t.Fatal("empty evidence accepted")
+	}
+}
+
+// TestVerificationToolsInvalidateEvidence binds release probes and their tooling to the recorded source.
+func TestVerificationToolsInvalidateEvidence(t *testing.T) {
+	root := fixture(t)
+	directory := filepath.Join(root, "tools", "consumercheck", "testdata")
+	if err := os.MkdirAll(directory, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(directory, "..", "main.go"), filepath.Join(directory, "native.go.txt")} {
+		recordFixture(t, root)
+		if err := os.WriteFile(path, []byte("package main\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := Generate(root); err == nil || !strings.Contains(err.Error(), "unit evidence is stale") {
+			t.Fatal("changed verification source reused stale evidence", err)
+		}
 	}
 }
