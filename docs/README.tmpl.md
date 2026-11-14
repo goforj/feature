@@ -12,7 +12,7 @@
   <img src="docs/assets/unit.svg" alt="Executed unit tests">
   <img src="docs/assets/coverage.svg" alt="Library unit statement coverage">
 </p>
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#api-index">API index</a> · <a href="docs/contract.md">Behavior contract</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#app-wide-and-per-user-settings">App-wide and per-user settings</a> · <a href="#api-index">API index</a> · <a href="docs/contract.md">Behavior contract</a></p>
 
 ## Features
 
@@ -65,6 +65,20 @@ cd feature
 go -C examples run ./quickstart
 ```
 
+## App-wide and per-user settings
+
+Use one shared engine for the application. A flag's default applies whenever no rule matches. Read app-wide behavior directly through `Features`, or use `Features.For` with a stable user identity to apply per-user overrides:
+
+```go
+{{SETTINGS}}
+```
+
+Rules are checked in order; the first match wins. `Subjects` matches `Target.Key` exactly. The `user:` prefix is an application convention, so use the same identity format in definitions and requests. For groups such as pro users or tenants, pass `Target.Attributes` and match attributes as shown in the quick start. A scope captures targeting data; use `Features.Snapshot` when related decisions must share one native revision.
+
+The configured default is the normal value when no rule matches. The fallback passed to `String` is used if evaluation fails, for example when the flag is missing. Change definitions through your source and refresh the shared engine to update live decisions.
+
+These flags suit behavior settings such as themes, enabled modules, and UI configuration. An application settings service should own editing, validation, permissions, persistence, and audit history. `MemorySource` stores definitions only in the current process; use file, HTTP, or custom sources for externally stored definitions. The engine does not persist user preferences. Run the [complete settings example](examples/settings/main.go) with `go -C examples run ./settings`.
+
 ## Available sources
 
 Native sources are included in the root module:
@@ -95,6 +109,7 @@ Run from the repository root:
 
 ```sh
 go -C examples run ./quickstart   # Typed flags, tenant targeting, live updates, and snapshots.
+go -C examples run ./settings     # App-wide defaults and exact per-user overrides.
 go -C examples run ./portable     # Portable checks and typed request targeting.
 go -C examples run ./typed        # Typed flags, application structs, arrays, and fallbacks.
 go -C examples run ./validation   # Definition paths and safe authoring diagnostics.
