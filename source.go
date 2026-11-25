@@ -50,6 +50,7 @@ func (s *MemorySource) Load(ctx context.Context) (Document, error) {
 }
 
 // FileSource reads a bounded JSON document from a regular file or regular-file symlink.
+// Unix opens avoid waiting for FIFO writers, and the opened descriptor must be regular.
 // Local filesystem calls cannot be interrupted; cancellation is checked at their boundaries.
 type FileSource struct {
 	path string
@@ -66,12 +67,12 @@ func (s *FileSource) Load(ctx context.Context) (Document, error) {
 	if err := ctx.Err(); err != nil {
 		return Document{}, err
 	}
-	// Reject devices and pipes before opening; the second check validates the opened file.
+	// Reject known special files before acquisition; readFile validates the opened descriptor.
 	info, err := os.Stat(s.path)
 	if err != nil || !info.Mode().IsRegular() {
 		return Document{}, ErrSource
 	}
-	file, err := os.Open(s.path)
+	file, err := openSourceFile(s.path)
 	if err != nil {
 		return Document{}, ErrSource
 	}
